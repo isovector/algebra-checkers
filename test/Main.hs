@@ -1,18 +1,12 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PackageImports        #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ViewPatterns          #-}
-{-# OPTIONS_GHC -fno-warn-orphans  #-}
 
+{-# OPTIONS_GHC -fno-warn-orphans  #-}
 -- {-# OPTIONS_GHC -ddump-splices     #-}
 
-module Deno where
+module Main where
 
 import           Data.Function
 import           Data.List (nub)

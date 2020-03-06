@@ -4,8 +4,6 @@
 
 module Test.QuickCheck.Checkers.Algebra.TH where
 
-import           Language.Haskell.TH
-import           Language.Haskell.TH.Syntax
 import qualified Control.Monad.Trans as T
 import           Control.Monad.Trans.State
 import           Data.Char
@@ -17,8 +15,10 @@ import           Data.List (nub)
 import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Traversable
+import           Language.Haskell.TH
+import           Language.Haskell.TH.Syntax
 import           Test.QuickCheck
-import Test.QuickCheck.Checkers.Algebra.Types
+import           Test.QuickCheck.Checkers.Algebra.Types
 
 
 
@@ -59,6 +59,9 @@ rebindVars m = everywhere $ mkT $ \case
   UnboundVarE n -> m M.! n
   t -> t
 
+mkMap :: [Name] -> [a] -> (a -> b) -> M.Map Name b
+mkMap vars as f = M.fromList . zip vars $ fmap f as
+
 
 law :: ExpQ -> ExpQ
 law = (lawImpl =<<)
@@ -71,11 +74,21 @@ lawImpl (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
   names <- for vars $ newName . nameBase
   z <-
     fmap (foldMap getBinds) $ for names $ \name ->
-      [e| do $(varP name) <- T.lift . flip biasedGenerate arbitrary =<< getDyns; pure () |]
-  let mapping = M.fromList $ zip vars $ fmap VarE names
-      printfd = M.fromList $ zip vars $ fmap (UnboundVarE . mkName . ('%':) . show @Int) [1..]
-      printfargs = listE $ flip fmap names $ \name -> [e|show $(varE name)|]
-      printfit = lift . pprint . deModuleName . rebindVars printfd
+      [e|
+        do
+          $(varP name) <- T.lift . flip biasedGenerate arbitrary =<< getDyns
+          pure ()
+          |]
+  let mapping = mkMap vars names VarE
+      printArgs = listE $ flip fmap names $ \name -> [e|show $(varE name)|]
+      printExpr
+        = lift
+        . pprint
+        . deModuleName
+        . rebindVars
+          ( mkMap vars [1..] $
+              UnboundVarE . mkName . ('%':) . show @Int
+          )
 
   save <- [e|
     modify ($(listE $ fmap (appE [e|toDyn|] . varE) names) ++)
@@ -84,15 +97,18 @@ lawImpl (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
   res <- [e|
     pure
     ( LawHand
-        (printf $(printfit exp1) $(printfargs))
+        (printf $(printExpr exp1) $(printArgs))
         $(pure $ rebindVars mapping exp1)
 
     , LawHand
-        (printf $(printfit exp2) $(printfargs))
+        (printf $(printExpr exp2) $(printArgs))
         $(pure $ rebindVars mapping exp2)
     )|]
-  [e| Law $(lift $ length vars) $(pure $ DoE $ z ++ fmap NoBindS [ save, res ]) |]
-lawImpl _ = error "lawImpl must be called with an expression of the form [e| foo a b c == bar a d e |]"
+  [e|
+    Law $(lift $ length vars) $(pure $ DoE $ z ++ fmap NoBindS [ save, res ])
+    |]
+lawImpl _ =
+  error "lawImpl must be called with an expression of the form [e| foo a b c == bar a d e |]"
 
 
 ------------------------------------------------------------------------------
