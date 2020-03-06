@@ -1,34 +1,27 @@
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE PackageImports        #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# OPTIONS_GHC -Wall              #-}
+{-# OPTIONS_GHC -fno-warn-orphans  #-}
 
 module Ok where
 
-import Control.Monad.Trans.State
-import Data.Char
-import Data.Traversable
-import Control.Arrow
-import Data.Function
-import Debug.Trace
-import Control.Monad
-import Data.Monoid
-import Test.QuickCheck.Checkers
-import Test.QuickCheck.Classes
-import Test.QuickCheck
-import Data.List (nub)
-import qualified Data.Set as S
-import Data.Word
-import "template-haskell" Language.Haskell.TH
-import Data.Generics.Schemes
-import Data.Generics.Aliases
-import qualified Data.Map as M
-import "template-haskell" Language.Haskell.TH.Syntax
-import Data.Data
-import Data.Dynamic
-import Data.Maybe
+import           Language.Haskell.TH
+import           Language.Haskell.TH.Syntax
 import qualified Control.Monad.Trans as T
+import           Control.Monad.Trans.State
+import           Data.Char
+import           Data.Data
+import           Data.Dynamic
+import           Data.Generics.Aliases
+import           Data.Generics.Schemes
+import           Data.List (nub)
+import qualified Data.Map as M
+import           Data.Maybe
+import           Data.Traversable
+import           Test.QuickCheck
 
 
 data LawHand a = LawHand
@@ -37,9 +30,11 @@ data LawHand a = LawHand
   } deriving Functor
 
 
-newtype Law a = Law
-  { runLaw :: StateT [Dynamic] Gen (LawHand a, LawHand a)
+data Law a = Law
+  { lawParams :: Int
+  , runLaw :: StateT [Dynamic] Gen (LawHand a, LawHand a)
   } deriving Functor
+
 
 biasedGenerate :: [a] -> Gen a -> Gen a
 biasedGenerate [] gena = gena
@@ -49,15 +44,9 @@ biasedGenerate as gena =
     , (1, gena)
     ]
 
+
 getDyns :: (Typeable a, Monad m) => StateT [Dynamic] m [a]
 getDyns = fmap (mapMaybe fromDynamic) get
-
--- mapLaw
---     :: (Typeable a, Typeable b)
---     => (a -> b)
---     -> Law a
---     -> Law b
--- mapLaw f (Law a) = Law (fmap (fmap (mapLawHand f *** mapLawHand f)) a)
 
 
 deModuleName :: Data a => a -> a
@@ -85,8 +74,8 @@ rebindVars m = everywhere $ mkT $ \case
   t -> t
 
 
-law2 :: ExpQ -> ExpQ
-law2 = (law =<<)
+lawM :: ExpQ -> ExpQ
+lawM = (law =<<)
 
 
 law :: Exp -> ExpQ
@@ -98,7 +87,7 @@ law (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
     fmap (foldMap getBinds) $ for names $ \name ->
       [e| do $(varP name) <- T.lift . flip biasedGenerate arbitrary =<< getDyns; pure () |]
   let mapping = M.fromList $ zip vars $ fmap VarE names
-      printfd = M.fromList $ zip vars $ fmap (UnboundVarE . mkName . ('%':) . show) [1..]
+      printfd = M.fromList $ zip vars $ fmap (UnboundVarE . mkName . ('%':) . show @Int) [1..]
       printfargs = listE $ flip fmap names $ \name -> [e|show $(varE name)|]
       printfit = lift . pprint . deModuleName . rebindVars printfd
 
@@ -116,7 +105,8 @@ law (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
         (printf $(printfit exp2) $(printfargs))
         $(pure $ rebindVars mapping exp2)
     )|]
-  [e| Law $ $(pure $ DoE $ z ++ fmap NoBindS [ save, res ]) |]
+  [e| Law $(lift $ length vars) $(pure $ DoE $ z ++ fmap NoBindS [ save, res ]) |]
+law _ = error "law must be called with an expression of the form [e| foo a b c == bar a d e |]"
 
 
 ------------------------------------------------------------------------------
