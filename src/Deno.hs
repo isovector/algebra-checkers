@@ -12,6 +12,7 @@
 
 module Deno where
 
+import Data.Typeable
 import Data.Bool
 import Control.Arrow
 import Data.Function
@@ -26,6 +27,8 @@ import qualified Data.Set as S
 import Data.Word
 import "template-haskell" Language.Haskell.TH
 import Data.Generics.Schemes
+import Control.Monad.Trans.State
+import Control.Monad.Trans
 
 import Ok
 
@@ -82,7 +85,7 @@ main :: IO ()
 main = quickBatch $ mconcat
   [ deno_not2 `models` not2
   , deno_and2 `models` and2
-  , ("laws", [("k", confluentModelLaw (commutLaw @Zoop) onlythreeLaw)])
+  , ("laws", [("k", confluentModelLaw (commutLaw @Int) onlythreeLaw)])
   ]
 
 
@@ -185,25 +188,31 @@ nofive = do
        )
 
 
+liftStateT :: Monad m => (m a -> m b) -> StateT s m a -> StateT s m b
+liftStateT f stm = StateT $ \s -> do
+  (a, s') <- runStateT stm s
+  b <- f $ pure a
+  pure $ (b, s')
+
 
 confluentLaw
     :: (Show x, Eq x, EqProp x)
     => Law x
     -> Law x
     -> Property
-confluentLaw (Law law1) (Law law2) = property $ do
-  (l1l@(_, l1lhs), l1r) <- law1
-  l2 <- law2 `suchThatMaybe` ((== l1lhs) . snd . fst)
+confluentLaw (Law law1) (Law law2) = property $ flip evalStateT [] $ do
+  (l1l@(LawHand _ l1lhs), l1r) <- law1
+  l2 <- liftStateT (`suchThatMaybe` ((== l1lhs) . lhValue . fst)) law2
   case l2 of
     Nothing -> discard
     Just (l2l, l2r) -> do
       let debug = mconcat $ zipWith pairwise [l1l, l2l, l1r] [l1r, l2r, l2r]
       pure $ conjoin
-        [ counterexample debug $ snd l1r =-= snd l2r
+        [ counterexample debug $ lhValue l1r =-= lhValue l2r
         ]
 
-pairwise :: (Eq x, EqProp x) => (String, x) -> (String, x) -> String
-pairwise (lstr, lhs) (rstr, rhs) =
+pairwise :: (Eq x, EqProp x) => LawHand x -> LawHand x -> String
+pairwise (LawHand lstr lhs) (LawHand rstr rhs) =
   mconcat
     [ lstr
     , " "
@@ -214,20 +223,20 @@ pairwise (lstr, lhs) (rstr, rhs) =
     ]
 
 confluentModelLaw
-    :: (Show x, Eq x, EqProp x, Model x' x)
+    :: (Show x, Eq x, EqProp x, Model x' x, Typeable x, Typeable x')
     => Law x'
     -> Law x'
     -> Property
 confluentModelLaw law1 law2 = confluentLaw (fmap model law1) (fmap model law2)
 
 
-commutLaw :: (Show z, Eq z, Arbitrary z) => Law (Foo z)
+commutLaw :: (Typeable z, Show z, Eq z, Arbitrary z) => Law (Foo z)
 commutLaw =
   $(law2 [e|
     insert a (insert b c) == insert b (insert a c)
     |])
 
-onlythreeLaw :: (Show z, Eq z, Arbitrary z) => Law (Foo z)
+onlythreeLaw :: (Typeable z, Show z, Eq z, Arbitrary z) => Law (Foo z)
 onlythreeLaw =
   $(law2 [e|
     insert a (insert b (insert c empty)) == insert b (insert c empty)

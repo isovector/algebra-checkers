@@ -6,6 +6,7 @@
 
 module Ok where
 
+import Control.Monad.Trans.State
 import Data.Char
 import Data.Traversable
 import Control.Arrow
@@ -25,12 +26,38 @@ import Data.Generics.Aliases
 import qualified Data.Map as M
 import "template-haskell" Language.Haskell.TH.Syntax
 import Data.Data
+import Data.Dynamic
+import Data.Maybe
+import qualified Control.Monad.Trans as T
 
 
-data Law a = Law
-  { runLaw :: Gen ((String, a), (String, a))
-  }
-  deriving Functor
+data LawHand a = LawHand
+  { lhDescriptor :: String
+  , lhValue :: a
+  } deriving Functor
+
+
+newtype Law a = Law
+  { runLaw :: StateT [Dynamic] Gen (LawHand a, LawHand a)
+  } deriving Functor
+
+biasedGenerate :: [a] -> Gen a -> Gen a
+biasedGenerate [] gena = gena
+biasedGenerate as gena =
+  frequency
+    [ (1, elements as)
+    , (1, gena)
+    ]
+
+getDyns :: (Typeable a, Monad m) => StateT [Dynamic] m [a]
+getDyns = fmap (mapMaybe fromDynamic) get
+
+-- mapLaw
+--     :: (Typeable a, Typeable b)
+--     => (a -> b)
+--     -> Law a
+--     -> Law b
+-- mapLaw f (Law a) = Law (fmap (fmap (mapLawHand f *** mapLawHand f)) a)
 
 
 deModuleName :: Data a => a -> a
@@ -65,24 +92,31 @@ law2 = (law =<<)
 law :: Exp -> ExpQ
 law (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
   let vars = nub $ unboundVars exp1 ++ unboundVars exp2
+
   names <- for vars $ newName . nameBase
   z <-
     fmap (foldMap getBinds) $ for names $ \name ->
-      [e| do $(varP name) <- arbitrary; pure () |]
+      [e| do $(varP name) <- T.lift . flip biasedGenerate arbitrary =<< getDyns; pure () |]
   let mapping = M.fromList $ zip vars $ fmap VarE names
       printfd = M.fromList $ zip vars $ fmap (UnboundVarE . mkName . ('%':) . show) [1..]
       printfargs = listE $ flip fmap names $ \name -> [e|show $(varE name)|]
       printfit = lift . pprint . deModuleName . rebindVars printfd
 
-  res <- [e| pure ( ( printf $(printfit exp1) $(printfargs)
-                    , $(pure $ rebindVars mapping exp1)
-                    )
+  save <- [e|
+    modify ($(listE $ fmap (appE [e|toDyn|] . varE) names) ++)
+    |]
 
-                  , ( printf $(printfit exp2) $(printfargs)
-                    , $(pure $ rebindVars mapping exp2)
-                    )
-                  )|]
-  [e| Law $(pure $ DoE $ z ++ [ NoBindS res ]) |]
+  res <- [e|
+    pure
+    ( LawHand
+        (printf $(printfit exp1) $(printfargs))
+        $(pure $ rebindVars mapping exp1)
+
+    , LawHand
+        (printf $(printfit exp2) $(printfargs))
+        $(pure $ rebindVars mapping exp2)
+    )|]
+  [e| Law $ $(pure $ DoE $ z ++ fmap NoBindS [ save, res ]) |]
 
 
 ------------------------------------------------------------------------------

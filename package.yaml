@@ -26,6 +26,8 @@ dependencies:
 - syb
 - checkers
 - QuickCheck
+- transformers
+- mtl
 
 library:
   source-dirs: src
