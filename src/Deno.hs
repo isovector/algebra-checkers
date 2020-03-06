@@ -8,26 +8,20 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE ViewPatterns          #-}
-{-# OPTIONS_GHC -Wall              #-}
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 
 -- {-# OPTIONS_GHC -ddump-splices     #-}
 
 module Deno where
 
-import           Control.Monad.Trans.State
-import           Data.Bool
 import           Data.Function
 import           Data.List (nub)
 import qualified Data.Set as S
 import           Data.Typeable
-import           Data.Word
-import           Ok
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers
-
-
-
+import           Test.QuickCheck.Checkers.Upstream
+import           Test.QuickCheck.Checkers.Algebra
 
 
 data Bool2 = Bool2
@@ -61,33 +55,17 @@ deno_and2 x y = model x && model y
 
 
 
-instance Model b b' => Model (a -> b) (a -> b') where
-  model f = model . f
-
-models
-    :: (Model b b', Arbitrary a, EqProp b', Show a)
-    => (a -> b')
-    -> (a -> b)
-    -> TestBatch
-models g f =
-  ( "denotation"
-  , [("semantic eq", model . f =-= g)]
-  )
-
 
 main :: IO ()
 main = quickBatch $ mconcat
-  [ deno_not2 `models` not2
-  , deno_and2 `models` and2
+  [ deno_not2 `denotationFor` not2
+  , deno_and2 `denotationFor` and2
   , ("laws", [("k", confluentModel (commutLaw @Int) onlythreeLaw)])
   ]
 
 
 instance EqProp a => EqProp (S.Set a) where
   (=-=) = (=-=) `on` S.toList
-
-instance EqProp Word8 where
-  (=-=) = (===)
 
 
 
@@ -139,77 +117,15 @@ onlythree = do
        )
 
 
-data Zoop = One | Two | Three | Four | Five
-  deriving (Eq, Ord, Show, Enum, Bounded)
-
-instance EqProp Zoop where
-  (=-=) = (===)
-
-instance Arbitrary Zoop where
-  arbitrary = oneof $ fmap pure [minBound..maxBound]
-
-
-nofive :: Gen (Foo Zoop, Foo Zoop)
-nofive = do
-  a <- arbitrary
-  pure ( insert Five a
-       , a
-       )
-
-
-liftStateT :: Monad m => (m a -> m b) -> StateT s m a -> StateT s m b
-liftStateT f stm = StateT $ \s -> do
-  (a, s') <- runStateT stm s
-  b <- f $ pure a
-  pure $ (b, s')
-
-
-confluent
-    :: (Show x, Eq x, EqProp x)
-    => Law x
-    -> Law x
-    -> Property
-confluent (Law c1 law1) (Law c2 law2) | c1 >= c2 =
-  property $ flip evalStateT [] $ do
-  (l1l@(LawHand _ l1lhs), l1r) <- law1
-  l2 <- liftStateT (`suchThatMaybe` ((== l1lhs) . lhValue . fst)) law2
-  case l2 of
-    Nothing -> discard
-    Just (l2l, l2r) -> do
-      let debug = mconcat $ zipWith pairwise [l1l, l2l, l1r] [l1r, l2r, l2r]
-      pure $ conjoin
-        [ counterexample debug $ lhValue l1r =-= lhValue l2r
-        ]
-confluent l1 l2 = confluent l2 l1
-
-pairwise :: (Eq x, EqProp x) => LawHand x -> LawHand x -> String
-pairwise (LawHand lstr lhs) (LawHand rstr rhs) =
-  mconcat
-    [ lstr
-    , " "
-    , bool "/=" "==" $ lhs == rhs
-    , " "
-    , rstr
-    , "\n"
-    ]
-
-confluentModel
-    :: (Show x, Eq x, EqProp x, Model x' x, Typeable x, Typeable x')
-    => Law x'
-    -> Law x'
-    -> Property
-confluentModel law1 law2 = confluent (fmap model law1) (fmap model law2)
-
-
 commutLaw :: (Typeable z, Show z, Eq z, Arbitrary z) => Law (Foo z)
 commutLaw =
-  $(lawM [e|
+  $(law [e|
     insert a (insert b c) == insert b (insert a c)
     |])
 
 onlythreeLaw :: (Typeable z, Show z, Eq z, Arbitrary z) => Law (Foo z)
 onlythreeLaw =
-  $(lawM [e|
+  $(law [e|
     insert a (insert b (insert c empty)) == insert b (insert c empty)
     |])
 

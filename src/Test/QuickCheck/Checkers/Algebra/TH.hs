@@ -1,12 +1,8 @@
-{-# LANGUAGE DeriveFunctor         #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TemplateHaskellQuotes #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# OPTIONS_GHC -Wall              #-}
-{-# OPTIONS_GHC -fno-warn-orphans  #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE TemplateHaskell  #-}
+{-# LANGUAGE TypeApplications #-}
 
-module Ok where
+module Test.QuickCheck.Checkers.Algebra.TH where
 
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
@@ -22,18 +18,8 @@ import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Traversable
 import           Test.QuickCheck
+import Test.QuickCheck.Checkers.Algebra.Types
 
-
-data LawHand a = LawHand
-  { lhDescriptor :: String
-  , lhValue :: a
-  } deriving Functor
-
-
-data Law a = Law
-  { lawParams :: Int
-  , runLaw :: StateT [Dynamic] Gen (LawHand a, LawHand a)
-  } deriving Functor
 
 
 biasedGenerate :: [a] -> Gen a -> Gen a
@@ -74,12 +60,12 @@ rebindVars m = everywhere $ mkT $ \case
   t -> t
 
 
-lawM :: ExpQ -> ExpQ
-lawM = (law =<<)
+law :: ExpQ -> ExpQ
+law = (lawImpl =<<)
 
 
-law :: Exp -> ExpQ
-law (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
+lawImpl :: Exp -> ExpQ
+lawImpl (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
   let vars = nub $ unboundVars exp1 ++ unboundVars exp2
 
   names <- for vars $ newName . nameBase
@@ -106,7 +92,7 @@ law (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
         $(pure $ rebindVars mapping exp2)
     )|]
   [e| Law $(lift $ length vars) $(pure $ DoE $ z ++ fmap NoBindS [ save, res ]) |]
-law _ = error "law must be called with an expression of the form [e| foo a b c == bar a d e |]"
+lawImpl _ = error "lawImpl must be called with an expression of the form [e| foo a b c == bar a d e |]"
 
 
 ------------------------------------------------------------------------------
