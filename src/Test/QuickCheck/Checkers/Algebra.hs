@@ -1,5 +1,6 @@
 module Test.QuickCheck.Checkers.Algebra
   ( Law, law
+  , checkLaw, checkLawModel
   , confluent
   , confluentModel
   ) where
@@ -18,6 +19,17 @@ liftStateT f stm = StateT $ \s -> do
   (a, s') <- runStateT stm s
   b <- f $ pure a
   pure $ (b, s')
+
+
+checkLaw :: (Eq x, EqProp x) => Law x -> Property
+checkLaw (Law _ l) = property $ flip evalStateT [] $ do
+  (lhs, rhs) <- l
+  let debug = pairwise lhs rhs
+  pure $ counterexample debug $ lhValue lhs =-= lhValue rhs
+
+
+checkLawModel :: (Model x' x, Eq x, EqProp x) => Law x' -> Property
+checkLawModel = checkLaw . fmap model
 
 
 confluent
