@@ -3,15 +3,23 @@ module Test.QuickCheck.Checkers.Algebra
   , checkLaw, checkLawModel
   , confluent
   , confluentModel
+  , testy
   ) where
 
-import           Control.Monad.Trans.State
-import           Data.Bool
-import           Data.Typeable
-import           Test.QuickCheck
-import           Test.QuickCheck.Checkers
-import           Test.QuickCheck.Checkers.Algebra.TH
-import           Test.QuickCheck.Checkers.Algebra.Types
+import Control.Monad
+import Control.Monad.Trans
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Writer.CPS
+import Data.Bool
+import Data.Foldable
+import Data.Typeable
+import Language.Haskell.TH
+import Prelude hiding (exp)
+import Test.QuickCheck
+import Test.QuickCheck.Checkers
+import Test.QuickCheck.Checkers.Algebra.TH
+import Test.QuickCheck.Checkers.Algebra.Types
 
 
 liftStateT :: Monad m => (m a -> m b) -> StateT s m a -> StateT s m b
@@ -22,7 +30,7 @@ liftStateT f stm = StateT $ \s -> do
 
 
 checkLaw :: (Eq x, EqProp x) => Law x -> Property
-checkLaw (Law _ l) = property $ flip evalStateT [] $ do
+checkLaw (Law _ l _ _) = property $ flip evalStateT [] $ do
   (lhs, rhs) <- l
   let debug = pairwise lhs rhs
   pure $ counterexample debug $ lhValue lhs =-= lhValue rhs
@@ -37,9 +45,10 @@ confluent
     => Law x
     -> Law x
     -> Property
-confluent (Law c1 law1) (Law c2 law2) | c1 >= c2 =
+confluent (Law c1 law1 _ _) (Law c2 law2 _ _) | c1 >= c2 =
   property $ flip evalStateT [] $ do
-  (l1l@(LawHand _ l1lhs), l1r) <- law1
+  (l1l, l1r) <- law1
+  let l1lhs = lhValue l1l
   l2 <- liftStateT (`suchThatMaybe` ((== l1lhs) . lhValue . fst)) law2
   case l2 of
     Nothing -> discard
@@ -52,13 +61,13 @@ confluent l1 l2 = confluent l2 l1
 
 
 pairwise :: (Eq x, EqProp x) => LawHand x -> LawHand x -> String
-pairwise (LawHand lstr lhs) (LawHand rstr rhs) =
+pairwise lhs rhs =
   mconcat
-    [ lstr
+    [ lhDescriptor lhs
     , " "
-    , bool "/=" "==" $ lhs == rhs
+    , bool "/=" "==" $ lhValue lhs == lhValue rhs
     , " "
-    , rstr
+    , lhDescriptor rhs
     , "\n"
     ]
 
@@ -68,4 +77,38 @@ confluentModel
     -> Law x'
     -> Property
 confluentModel law1 law2 = confluent (fmap model law1) (fmap model law2)
+
+testy :: Law x -> (Maybe (), [(Name, Exp)])
+testy (Law _ _ lhs rhs) = runWriter . runMaybeT $ unify lhs rhs
+
+
+unify :: Exp -> Exp -> MaybeT (Writer [(Name, Exp)]) ()
+unify (ParensE exp1) exp2 = unify exp1 exp2
+unify exp1 (ParensE exp2) = unify exp1 exp2
+unify (UnboundVarE name) exp = lift $ tell [(name, exp)]
+unify exp (UnboundVarE name) = lift $ tell [(name, exp)]
+unify (AppE f1 exp1) (AppE f2 exp2) =
+  unify f1 f2 >> unify exp1 exp2
+unify (AppTypeE exp1 _) (AppTypeE exp2 _) = unify exp1 exp2
+unify (InfixE (Just lhs1) exp1 (Just rhs1))
+      (InfixE (Just lhs2) exp2 (Just rhs2)) = do
+  unify lhs1 lhs2
+  unify exp1 exp2
+  unify rhs1 rhs2
+unify (InfixE Nothing exp1 (Just rhs1))
+      (InfixE Nothing exp2 (Just rhs2)) = do
+  unify exp1 exp2
+  unify rhs1 rhs2
+unify (InfixE (Just lhs1) exp1 Nothing)
+      (InfixE (Just lhs2) exp2 Nothing) = do
+  unify lhs1 lhs2
+  unify exp1 exp2
+unify (TupE exps1) (TupE exps2) | length exps1 == length exps2 =
+  sequenceA_ (zipWith unify exps1 exps2)
+unify (CondE cond1 then1 else1) (CondE cond2 then2 else2) = do
+  unify cond1 cond2
+  unify then1 then2
+  unify else1 else2
+unify (SigE exp1 _) (SigE exp2 _) = unify exp1 exp2
+unify a b = guard $ a == b
 

@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications      #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
--- {-# OPTIONS_GHC -ddump-splices     #-}
+{-# OPTIONS_GHC -ddump-splices     #-}
 
 module Main where
 
@@ -90,27 +90,6 @@ remove :: Eq a => a -> Foo a -> Foo a
 remove a (Foo ms c) = Foo (filter (/= a) ms) c
 
 
-
-commut :: (Arbitrary a, Ord a) => Gen (Foo a, Foo a)
-commut = do
-  a <- arbitrary
-  b <- arbitrary
-  c <- arbitrary
-  pure ( insert a $ insert b c
-       , insert b $ insert a c
-       )
-
-
-onlythree :: (Arbitrary a, Ord a) => Gen (Foo a, Foo a)
-onlythree = do
-  a <- arbitrary
-  b <- arbitrary
-  c <- arbitrary
-  pure ( insert a $ insert b $ insert c empty
-       , insert b $ insert c empty
-       )
-
-
 commutLaw :: (Typeable z, Show z, Eq z, Arbitrary z) => Law (Foo z)
 commutLaw =
   $(law [e|
@@ -121,5 +100,12 @@ onlythreeLaw :: (Typeable z, Show z, Eq z, Arbitrary z) => Law (Foo z)
 onlythreeLaw =
   $(law [e|
     insert a (insert b (insert c empty)) == insert b (insert c empty)
+    |])
+
+
+misc :: (Typeable z, Show z, Eq z, Arbitrary z, Num z) => Law (Foo z)
+misc =
+  $(law [e|
+    insert a (insert b (insert c empty)) == insert 5 (insert e f)
     |])
 

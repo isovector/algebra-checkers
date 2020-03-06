@@ -1,13 +1,13 @@
-{-# LANGUAGE LambdaCase       #-}
-{-# LANGUAGE TemplateHaskell  #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE TypeApplications   #-}
 
 module Test.QuickCheck.Checkers.Algebra.TH where
 
 import qualified Control.Monad.Trans as T
 import           Control.Monad.Trans.State
 import           Data.Char
-import           Data.Data
+import           Data.Data (Data)
 import           Data.Dynamic
 import           Data.Generics.Aliases
 import           Data.Generics.Schemes
@@ -16,6 +16,7 @@ import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Traversable
 import           Language.Haskell.TH
+import           Language.Haskell.TH.Orphans ()
 import           Language.Haskell.TH.Syntax
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers.Algebra.Types
@@ -105,11 +106,13 @@ lawImpl (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
         $(pure $ rebindVars mapping exp2)
     )|]
   [e|
-    Law $(lift $ length vars) $(pure $ DoE $ z ++ fmap NoBindS [ save, res ])
+    Law $(lift $ length vars)
+        $(pure $ DoE $ z ++ fmap NoBindS [ save, res ])
+        $(lift exp1)
+        $(lift exp2)
     |]
 lawImpl _ =
   error "lawImpl must be called with an expression of the form [e| foo a b c == bar a d e |]"
-
 
 ------------------------------------------------------------------------------
 -- | A bare-boned implementation of printf. This function will replace tokens

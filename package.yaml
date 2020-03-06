@@ -28,6 +28,8 @@ dependencies:
 - QuickCheck
 - transformers
 - mtl
+- logict
+- monad-gen
 
 ghc-options:
   - -Wall
