@@ -41,10 +41,8 @@ lawTests = $(lawConf'
       (set i (get i s) s == s)
   law "get/set"
       (get i (set i x s) == x)
-  law "set mempty"
-      (set i x mempty == mempty)
-  law "set mappend"
-      (set i x (s1 <> s2) == set i x s1 <> set i x s2)
+  homo @Monoid
+      (\s -> set i x s)
   |])
 ```
 
@@ -61,19 +59,19 @@ Theorems:
 • set i x' (set i x s) == set i x' s (definition of "set/set")
 • set i (get i s) s == s (definition of "set/get")
 • get i (set i x s) == x (definition of "get/set")
-• set i x mempty == mempty (definition of "set mempty")
+• set i x mempty == mempty (definition of "set:Monoid:mempty")
 • set i x (s1 <> s2) == set i x s1 <> set i x s2
-    (definition of "set mappend")
+    (definition of "set:Monoid:<>")
 • set i1 (get i1 s2) s1 == set i1 x1 s1
     (implied by "set/get" and "set/set")
 • set i1 (get i1 s1) s12 <> set i1 (get i1 s1) s22 == s12 <> s22
-    (implied by "set mappend" and "set/get")
-• get i1 mempty == x1 (implied by "get/set" and "set mempty")
+    (implied by "set:Monoid:<>" and "set/get")
+• get i1 mempty == x1 (implied by "get/set" and "set:Monoid:mempty")
 • set i1 x'2 (set i1 x1 s11 <> set i1 x1 s21)
   == set i1 x'2 (s11 <> s21)
-    (implied by "set mappend" and "set/set")
+    (implied by "set:Monoid:<>" and "set/set")
 • get i1 (set i1 x1 s11 <> set i1 x1 s21) == x1
-    (implied by "get/set" and "set mappend")
+    (implied by "get/set" and "set:Monoid:<>")
 ```
 
 Uh oh! Look at that!

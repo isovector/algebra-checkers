@@ -10,6 +10,7 @@
 
 import           Data.Function
 import           Data.List (nub)
+import           Data.Monoid
 import qualified Data.Set as S
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers
@@ -59,6 +60,9 @@ deno_and2 x y = model x && model y
 instance EqProp a => EqProp (S.Set a) where
   (=-=) = (=-=) `on` S.toList
 
+instance EqProp Any where
+  (=-=) = (=-=) `on` getAny
+
 
 
 data Foo a = Foo
@@ -87,8 +91,8 @@ size (Foo ms _) = length ms
 remove :: Eq a => a -> Foo a -> Foo a
 remove a (Foo ms c) = Foo (filter (/= a) ms) c
 
-get :: Int -> String -> Bool
-set :: Int -> Bool -> String -> String
+get :: Int -> String -> Any
+set :: Int -> Any -> String -> String
 get = undefined
 set = undefined
 
@@ -98,7 +102,7 @@ lawTests = $(theoremsOf'
   law "set/set"     (set i x' (set i x s) == set i x' s)
   law "set/get"    $ set i (get i s) s == s
   law "get/set"     (get i (set i x s) == x)
-  law "set mempty"  (set i x mempty == mempty)
-  law "set mappend" (set i x (s1 <> s2) == set i x s1 <> set i x s2)
+  homo @Monoid $ \h -> set i x h
+  homo @Monoid $ \h -> get i h
   |])
 

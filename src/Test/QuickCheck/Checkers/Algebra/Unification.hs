@@ -1,4 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase      #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 module Test.QuickCheck.Checkers.Algebra.Unification where
 
@@ -27,9 +29,22 @@ unboundVars = everything (++) $
     _ -> []
 
 
+------------------------------------------------------------------------------
+-- | Operates over UnboundVarEs
+bindVars :: Data a => M.Map Name Exp -> a -> a
+bindVars m = everywhere $ mkT $ \case
+  e@(UnboundVarE n) ->
+    case M.lookup n m of
+      Just e' -> e'
+      Nothing -> e
+  t -> t
+
+
+------------------------------------------------------------------------------
+-- | Operates over VarEs
 rebindVars :: Data a => M.Map Name Exp -> a -> a
 rebindVars m = everywhere $ mkT $ \case
-  e@(UnboundVarE n) ->
+  e@(VarE n) ->
     case M.lookup n m of
       Just e' -> e'
       Nothing -> e
@@ -45,7 +60,7 @@ renameVars f = everywhere $ mkT $ \case
 type Subst = M.Map Name Exp
 
 sub :: Data a => Subst -> a -> a
-sub = rebindVars
+sub = bindVars
 
 unifySub :: Subst -> Exp -> Exp -> Maybe Subst
 unifySub s a b = fmap (s <>) $ on unify (sub s) a b
@@ -63,7 +78,7 @@ criticalPairs other me = do
 
   pat <- subexps melhs
   Just subs <- pure $ unify (seExp pat) otherlhs
-  let res = rebindVars subs (merhs, replaceSubexp pat (const otherrhs) melhs)
+  let res = bindVars subs (merhs, replaceSubexp pat (const otherrhs) melhs)
   guard $ uncurry (/=) res
   let (a,b) = res
   pure (min a b, max a b)
@@ -100,7 +115,7 @@ equalUpToAlpha a b =
   maybe
     False
     (\subst -> all isUnbound subst
-            && uncurry (==) (rebindVars subst (a, b)))
+            && uncurry (==) (bindVars subst (a, b)))
     (unify a b)
   where
     isUnbound (UnboundVarE _) = True
