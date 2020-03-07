@@ -57,7 +57,10 @@ unboundVars = everything (++) $
 
 rebindVars :: M.Map Name Exp -> Exp -> Exp
 rebindVars m = everywhere $ mkT $ \case
-  UnboundVarE n -> m M.! n
+  e@(UnboundVarE n) ->
+    case M.lookup n m of
+      Just e' -> e'
+      Nothing -> e
   t -> t
 
 mkMap :: [Name] -> [a] -> (a -> b) -> M.Map Name b

@@ -14,7 +14,6 @@ import qualified Data.Set as S
 import           Data.Typeable
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers
-import           Test.QuickCheck.Checkers.Upstream
 import           Test.QuickCheck.Checkers.Algebra
 
 
@@ -106,6 +105,6 @@ onlythreeLaw =
 misc :: (Typeable z, Show z, Eq z, Arbitrary z, Num z) => Law (Foo z)
 misc =
   $(law [e|
-    insert a (insert b (insert c empty)) == insert 5 (insert e f)
+    insert a (insert a empty) == insert 9 (insert b c)
     |])
 
