@@ -18,6 +18,13 @@ packages:
       sha256: 92af2d6367fa2facf073145b53bc094f159332d1e5c6bfffef2e383a058b450e
   original:
     hackage: checkers-0.5.4
+- completed:
+    hackage: ansi-terminal-0.10.3@sha256:e2fbcef5f980dc234c7ad8e2fa433b0e8109132c9e643bc40ea5608cd5697797,3226
+    pantry-tree:
+      size: 1461
+      sha256: 02f05d52be3ffcf36c78876629cbab80b63420672685371aea4fd10e1c4aabb6
+  original:
+    hackage: ansi-terminal-0.10.3
 snapshots:
 - completed:
     size: 523443

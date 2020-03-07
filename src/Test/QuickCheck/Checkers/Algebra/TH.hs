@@ -1,26 +1,30 @@
-{-# LANGUAGE LambdaCase       #-}
 {-# LANGUAGE PatternSynonyms  #-}
 {-# LANGUAGE TemplateHaskell  #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns     #-}
 
 module Test.QuickCheck.Checkers.Algebra.TH where
 
 
 import Control.Monad
-import Data.Foldable
-import Data.List (nub, intercalate)
+import Data.List (nub)
 import Data.Traversable
-import Language.Haskell.TH
+import Language.Haskell.TH hiding (ppr)
+import qualified Language.Haskell.TH as Ppr (ppr)
+import Language.Haskell.TH.PprLib (to_HPJ_Doc)
+import System.Console.ANSI
 import Test.QuickCheck hiding (collect)
 import Test.QuickCheck.Checkers.Algebra.Types
 import Test.QuickCheck.Checkers.Algebra.Unification
+import Text.PrettyPrint.HughesPJ hiding ((<>))
+import qualified Text.PrettyPrint.HughesPJ as Ppr
 
 
+ppr :: Ppr a => a -> Doc
+ppr = to_HPJ_Doc . Ppr.ppr
 
 
-propTestEq :: Exp -> Exp -> ExpQ
-propTestEq exp1 exp2 = do
+propTestEq :: Implication -> ExpQ
+propTestEq (Implication _ exp1 exp2) = do
   let vars = nub $ unboundVars exp1 ++ unboundVars exp2
   names <- for vars $ newName . nameBase
   [e|
@@ -33,72 +37,94 @@ lawConf' :: ExpQ -> ExpQ
 lawConf' = (lawConf =<<)
 
 lawConf :: Exp -> ExpQ
-lawConf (DoE z) = do
-  let laws = fmap collect z
-      lhs_rhs_tests = fmap (\(Law _ a b) -> propTestEq a b) laws
-      critical_tests = do
-        l1 <- laws
-        l2 <- laws
-        guard $ l1 /= l2
-        (lhs, rhs) <- criticalPairs l1 l2
-        pure $ propTestEq lhs rhs
-      tests = lhs_rhs_tests ++ critical_tests
-  listE tests
-lawConf _ = error "you have to call lawConf with a do block"
+lawConf = listE . fmap propTestEq . implicate . parseLaws
+
+parseLaws :: Exp -> [Law]
+parseLaws (DoE z) = fmap collect z
+parseLaws _ = error "you must call parseLaws with a do block"
 
 data ImplSort
   = LawDefn String
   | Interaction String String
   deriving (Eq, Ord, Show)
 
-showImplSort :: ImplSort -> String
-showImplSort (LawDefn n) = "the definition of " ++ show n
+showImplSort :: ImplSort -> Doc
+showImplSort (LawDefn n) =
+  text "definition of" <+> colorize lawColor (text $ show n)
 showImplSort (Interaction a b) =
-  mconcat
-    [ "an interaction between "
-    , show $ min a b
-    , " and "
-    , show $ max a b
+  hsep
+    [ text "implied by"
+    , colorize lawColor $ text $ show $ min a b
+    , text "and"
+    , colorize lawColor $ text $ show $ max a b
     ]
+
+lawColor :: Color
+lawColor = Yellow
+
 
 data Implication = Implication
   { implSort :: ImplSort
-  , implLhs :: Exp
-  , implRhs :: Exp
+  , implLhs  :: Exp
+  , implRhs  :: Exp
   }
 
 instance Eq Implication where
   Implication _ a a' == Implication _ b b' =
     equalUpToAlpha a b && equalUpToAlpha a' b'
 
+implicate :: [Law] -> [Implication]
+implicate laws =
+  let law_impls = fmap (\(Law n a b) -> Implication (LawDefn n) a b) laws
+      implications = do
+         l1 <- laws
+         l2 <- laws
+         guard $ l1 /= l2
+         (lhs, rhs) <- criticalPairs l1 l2
+         pure $ Implication (Interaction (lawName l1) (lawName l2)) lhs rhs
+   in nub $ law_impls <> implications
+
+
 implicationsOf' :: ExpQ -> ExpQ
 implicationsOf' = (implicationsOf =<<)
 
+
 implicationsOf :: Exp -> ExpQ
-implicationsOf (DoE z) = do
-  -- todo: base everything around the implication type
-  let laws = fmap collect z
-      law_impls = fmap (\(Law n a b) -> Implication (LawDefn n) a b) laws
-      implications = do
-        l1 <- laws
-        l2 <- laws
-        guard $ l1 /= l2
-        (lhs, rhs) <- criticalPairs l1 l2
-        pure $ Implication (Interaction (lawName l1) (lawName l2)) lhs rhs
-  for_ (nub $ law_impls <> implications) $ \(Implication n a b) -> do
-    let vars = nub $ fmap nameBase $ unboundVars a ++ unboundVars b
-    reportWarning $ mconcat
-      [ "∀ "
-      , intercalate " " vars
-      , "\n      . "
-      , pprint $ deModuleName a
-      , "\n     == "
-      , pprint $ deModuleName b
-      , "\n arising from "
-      , showImplSort n
+implicationsOf z = do
+  let impls = implicate $ parseLaws z
+  runIO $ do
+    putStrLn ""
+    putStrLn . render $ sep (text "Implications:" : text "" : fmap showImplication impls)
+    putStrLn ""
+    putStrLn ""
+  listE $ fmap propTestEq impls
+
+
+colorize :: Color -> Doc -> Doc
+colorize c doc
+       = zeroWidthText (setSGRCode [SetColor Foreground Vivid c])
+  Ppr.<> doc
+  Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Foreground])
+
+backcolorize :: Color -> Doc -> Doc
+backcolorize c doc
+       = zeroWidthText (setSGRCode [SetColor Background Vivid c])
+  Ppr.<> doc
+  Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Background])
+
+
+showImplication :: Implication -> Doc
+showImplication (Implication n a b) = hang (text "•") 2 $
+  sep
+  [ sep
+      [ colorize exprColor $ ppr $ deModuleName a
+      , text "==" <+> (colorize exprColor $ ppr $ deModuleName b)
       ]
-  lawConf (DoE z)
-implicationsOf _ = error "you have to call implicationsOf with a do block"
+  , nest 2 $ parens $ showImplSort n
+  ]
+
+exprColor :: Color
+exprColor = Blue
 
 
 collect :: Stmt -> Law

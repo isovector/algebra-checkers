@@ -30,6 +30,8 @@ dependencies:
 - mtl
 - logict
 - monad-gen
+- pretty
+- ansi-terminal
 
 ghc-options:
   - -Wall

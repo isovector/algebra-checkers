@@ -6,4 +6,5 @@ packages:
 extra-deps:
 - monad-gen-0.3.0.1
 - checkers-0.5.4
+- ansi-terminal-0.10.3
 
