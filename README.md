@@ -56,6 +56,8 @@ If we use the `implicationsOf'` function instead of `lawConf'`,
 our algebra. This serves as a good sanity check:
 
 ```
+Implications:
+
 • set i x' (set i x s) == set i x' s (definition of "set/set")
 • set i (get i s) s == s (definition of "set/get")
 • get i (set i x s) == x (definition of "get/set")
