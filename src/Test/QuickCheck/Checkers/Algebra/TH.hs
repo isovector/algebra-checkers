@@ -55,13 +55,20 @@ unboundVars = everything (++) $
     _ -> []
 
 
-rebindVars :: M.Map Name Exp -> Exp -> Exp
+rebindVars :: Data a => M.Map Name Exp -> a -> a
 rebindVars m = everywhere $ mkT $ \case
   e@(UnboundVarE n) ->
     case M.lookup n m of
       Just e' -> e'
       Nothing -> e
   t -> t
+
+
+renameVars :: Data a => (String -> String) -> a -> a
+renameVars f = everywhere $ mkT $ \case
+  UnboundVarE n -> UnboundVarE . mkName . f $ nameBase n
+  t -> t
+
 
 mkMap :: [Name] -> [a] -> (a -> b) -> M.Map Name b
 mkMap vars as f = M.fromList . zip vars $ fmap f as

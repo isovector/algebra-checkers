@@ -1,26 +1,19 @@
 module Test.QuickCheck.Checkers.Algebra
-  ( Law, law
+  ( Law (..), law
   , checkLaw, checkLawModel
   , confluent
   , confluentModel
-  , testy
   ) where
 
-import           Control.Monad
-import           Control.Monad.Trans
-import           Control.Monad.Trans.State
-import           Control.Monad.Trans.Writer.CPS
-import           Data.Bool
-import           Data.Foldable
-import qualified Data.Map as M
-import           Data.Typeable
-import           Language.Haskell.TH
-import           Prelude hiding (exp)
-import           Test.QuickCheck
-import           Test.QuickCheck.Checkers
-import           Test.QuickCheck.Checkers.Algebra.TH
-import           Test.QuickCheck.Checkers.Algebra.Types
-import Data.Function
+import Data.Data
+import Control.Monad
+import Control.Monad.Trans.State
+import Data.Bool
+import Prelude hiding (exp)
+import Test.QuickCheck
+import Test.QuickCheck.Checkers
+import Test.QuickCheck.Checkers.Algebra.TH
+import Test.QuickCheck.Checkers.Algebra.Types
 
 
 liftStateT :: Monad m => (m a -> m b) -> StateT s m a -> StateT s m b
@@ -78,56 +71,4 @@ confluentModel
     -> Law x'
     -> Property
 confluentModel law1 law2 = confluent (fmap model law1) (fmap model law2)
-
-testy :: Law x -> Maybe [(Name, Exp)]
-testy (Law _ _ lhs rhs) = fmap M.toList $ unify lhs rhs
-
-
-type Subst = M.Map Name Exp
-
-sub :: Subst -> Exp -> Exp
-sub = rebindVars
-
-unifySub :: Subst -> Exp -> Exp -> Maybe Subst
-unifySub s a b = fmap (s <>) $ (unify `on` sub s) a b
-
-unify :: Exp -> Exp -> Maybe Subst
-unify (ParensE exp1) exp2 = unify exp1 exp2
-unify exp1 (ParensE exp2) = unify exp1 exp2
-unify (UnboundVarE name) exp = pure $ M.singleton name exp
-unify exp (UnboundVarE name) = pure $ M.singleton name exp
-unify (AppE f1 exp1) (AppE f2 exp2) = do
-  s1 <- unify f1 f2
-  s2 <- unifySub s1 exp1 exp2
-  pure s2
-unify (AppTypeE exp1 t1) (AppTypeE exp2 t2) = do
-  guard $ t1 == t2
-  unify exp1 exp2
-unify (InfixE (Just lhs1) exp1 (Just rhs1))
-      (InfixE (Just lhs2) exp2 (Just rhs2)) = do
-  s1 <- unify exp1 exp2
-  s2 <- unifySub s1 lhs1 lhs2
-  s3 <- unifySub s2 rhs1 rhs2
-  pure s3
-unify (InfixE Nothing exp1 (Just rhs1))
-      (InfixE Nothing exp2 (Just rhs2)) = do
-  s1 <- unify exp1 exp2
-  unifySub s1 rhs1 rhs2
-unify (InfixE (Just lhs1) exp1 Nothing)
-      (InfixE (Just lhs2) exp2 Nothing) = do
-  s1 <- unify lhs1 lhs2
-  unifySub s1 exp1 exp2
-unify (TupE exps1) (TupE exps2) = do
-  guard $ exps1 == exps2
-  foldM (uncurry . unifySub) mempty $ zip exps1 exps2
-unify (CondE cond1 then1 else1) (CondE cond2 then2 else2) = do
-  s1 <- unify cond1 cond2
-  s2 <- unifySub s1 then1 then2
-  unifySub s2 else1 else2
-unify (SigE exp1 t1) (SigE exp2 t2) = do
-  guard $ t1 == t2
-  unify exp1 exp2
-unify a b = do
-  guard $ a == b
-  pure mempty
 

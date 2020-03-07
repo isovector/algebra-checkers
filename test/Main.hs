@@ -15,6 +15,8 @@ import           Data.Typeable
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers
 import           Test.QuickCheck.Checkers.Algebra
+import           Test.QuickCheck.Checkers.Algebra.Unification
+import           Language.Haskell.TH.Ppr
 
 
 data Bool2 = Bool2
@@ -107,4 +109,5 @@ misc =
   $(law [e|
     insert a (insert a empty) == insert 9 (insert b c)
     |])
+
 
