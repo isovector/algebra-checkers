@@ -4,23 +4,21 @@
 
 module Test.QuickCheck.Checkers.Algebra.TH where
 
-import qualified Control.Monad.Trans as T
+
+-- import           Test.QuickCheck.Checkers (TestBatch)
+import Data.Foldable
+import           Control.Monad
 import           Control.Monad.Trans.State
 import           Data.Char
-import           Data.Data (Data)
 import           Data.Dynamic
-import           Data.Generics.Aliases
-import           Data.Generics.Schemes
-import           Data.List (nub)
+import           Data.List (nub, intercalate)
 import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Traversable
 import           Language.Haskell.TH
-import           Language.Haskell.TH.Orphans ()
-import           Language.Haskell.TH.Syntax
-import           Test.QuickCheck
--- import           Test.QuickCheck.Checkers (TestBatch)
+import           Test.QuickCheck hiding (collect)
 import           Test.QuickCheck.Checkers.Algebra.Types
+import           Test.QuickCheck.Checkers.Algebra.Unification
 
 
 
@@ -37,40 +35,6 @@ getDyns :: (Typeable a, Monad m) => StateT [Dynamic] m [a]
 getDyns = fmap (mapMaybe fromDynamic) get
 
 
-deModuleName :: Data a => a -> a
-deModuleName = everywhere $ mkT $ \case
-  n -> mkName $ nameBase n
-
-
-getBinds :: Exp -> [Stmt]
-getBinds = everything (++) $
-  mkQ [] $ \case
-    x@BindS{} -> [x]
-    _ -> []
-
-
-unboundVars :: Exp -> [Name]
-unboundVars = everything (++) $
-  mkQ [] $ \case
-    UnboundVarE n -> [n]
-    _ -> []
-
-
-rebindVars :: Data a => M.Map Name Exp -> a -> a
-rebindVars m = everywhere $ mkT $ \case
-  e@(UnboundVarE n) ->
-    case M.lookup n m of
-      Just e' -> e'
-      Nothing -> e
-  t -> t
-
-
-renameVars :: Data a => (String -> String) -> a -> a
-renameVars f = everywhere $ mkT $ \case
-  UnboundVarE n -> UnboundVarE . mkName . f $ nameBase n
-  t -> t
-
-
 mkMap :: [Name] -> [a] -> (a -> b) -> M.Map Name b
 mkMap vars as f = M.fromList . zip vars $ fmap f as
 
@@ -85,56 +49,61 @@ propTestEq exp1 exp2 = do
       |])
     |]
 
+lawConf' :: ExpQ -> ExpQ
+lawConf' = (lawConf =<<)
 
-law :: ExpQ -> ExpQ
-law = (lawImpl =<<)
+lawConf :: Exp -> ExpQ
+lawConf (DoE z) = do
+  let laws = fmap collect z
+      lhs_rhs_tests = fmap (\(Law' _ a b) -> propTestEq a b) laws
+      critical_tests = do
+        l1 <- laws
+        l2 <- laws
+        guard $ l1 /= l2
+        (lhs, rhs) <- criticalPairs l1 l2
+        pure $ propTestEq lhs rhs
+      tests = lhs_rhs_tests ++ critical_tests
+  listE tests
+
+data Implication = Implication Exp Exp
+
+implicationsOf' :: ExpQ -> ExpQ
+implicationsOf' = (implicationsOf =<<)
+
+implicationsOf :: Exp -> ExpQ
+implicationsOf (DoE z) = do
+  let laws = fmap collect z
+      implications = do
+        l1 <- laws
+        l2 <- laws
+        guard $ l1 /= l2
+        (lhs, rhs) <- criticalPairs l1 l2
+        pure $ Implication lhs rhs
+  for_ implications $ \(Implication a b) -> do
+    let vars = nub $ fmap nameBase $ unboundVars a ++ unboundVars b
+    reportWarning $ mconcat
+      [ "∀ "
+      , intercalate " " vars
+      , "\n      . "
+      , pprint $ deModuleName a
+      , "\n     == "
+      , pprint $ deModuleName b
+      ]
+  [e| undefined |]
+
+collect :: Stmt -> Law'
+collect (NoBindS (VarE lawfn `AppE` LitE  (StringL lawname) `AppE`
+  (InfixE (Just exp1) (VarE eq) (Just exp2))))
+    | eq == '(==)
+    , lawfn == 'law
+    = Law' lawname exp1 exp2
+collect _ = error
+  "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
 
 
-lawImpl :: Exp -> ExpQ
-lawImpl (InfixE (Just exp1) (VarE eq) (Just exp2)) | eq == '(==) = do
-  let vars = nub $ unboundVars exp1 ++ unboundVars exp2
+law :: String -> Bool -> a
+law = undefined
 
-  names <- for vars $ newName . nameBase
-  z <-
-    fmap (foldMap getBinds) $ for names $ \name ->
-      [e|
-        do
-          $(varP name) <- T.lift . flip biasedGenerate arbitrary =<< getDyns
-          pure ()
-          |]
-  let mapping = mkMap vars names VarE
-      printArgs = listE $ flip fmap names $ \name -> [e|show $(varE name)|]
-      printExpr
-        = lift
-        . pprint
-        . deModuleName
-        . rebindVars
-          ( mkMap vars [1..] $
-              UnboundVarE . mkName . ('%':) . show @Int
-          )
-
-  save <- [e|
-    modify ($(listE $ fmap (appE [e|toDyn|] . varE) names) ++)
-    |]
-
-  res <- [e|
-    pure
-    ( LawHand
-        (printf $(printExpr exp1) $(printArgs))
-        $(pure $ rebindVars mapping exp1)
-
-    , LawHand
-        (printf $(printExpr exp2) $(printArgs))
-        $(pure $ rebindVars mapping exp2)
-    )|]
-  [e|
-    Law $(lift $ length vars)
-        $(pure $ DoE $ z ++ fmap NoBindS [ save, res ])
-        $(lift exp1)
-        $(lift exp2)
-    |]
-lawImpl _ =
-  error "lawImpl must be called with an expression of the form [e| foo a b c == bar a d e |]"
 
 ------------------------------------------------------------------------------
 -- | A bare-boned implementation of printf. This function will replace tokens

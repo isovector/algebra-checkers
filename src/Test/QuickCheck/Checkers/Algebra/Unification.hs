@@ -2,21 +2,51 @@
 
 module Test.QuickCheck.Checkers.Algebra.Unification where
 
-import Debug.Trace
-import Control.Applicative
-import Control.Monad.State
-import           Control.Monad
+import           Control.Applicative
+import           Control.Monad.State
+import           Control.Monad.Trans.Writer
 import           Data.Data
 import           Data.Function
 import           Data.Generics.Aliases
 import           Data.Generics.Schemes
 import qualified Data.Map as M
-import qualified Data.Set as S
 import           Language.Haskell.TH
 import           Prelude hiding (exp)
-import           Test.QuickCheck.Checkers.Algebra.TH
 import           Test.QuickCheck.Checkers.Algebra.Types
-import Control.Monad.Trans.Writer
+
+
+deModuleName :: Data a => a -> a
+deModuleName = everywhere $ mkT $ \case
+  n -> mkName $ nameBase n
+
+
+getBinds :: Exp -> [Stmt]
+getBinds = everything (++) $
+  mkQ [] $ \case
+    x@BindS{} -> [x]
+    _ -> []
+
+
+unboundVars :: Exp -> [Name]
+unboundVars = everything (++) $
+  mkQ [] $ \case
+    UnboundVarE n -> [n]
+    _ -> []
+
+
+rebindVars :: Data a => M.Map Name Exp -> a -> a
+rebindVars m = everywhere $ mkT $ \case
+  e@(UnboundVarE n) ->
+    case M.lookup n m of
+      Just e' -> e'
+      Nothing -> e
+  t -> t
+
+
+renameVars :: Data a => (String -> String) -> a -> a
+renameVars f = everywhere $ mkT $ \case
+  UnboundVarE n -> UnboundVarE . mkName . f $ nameBase n
+  t -> t
 
 
 testy :: Law x -> Maybe [(Name, Exp)]
@@ -36,20 +66,19 @@ unifySub s a b = fmap (s <>) $ on unify (sub s) a b
 type Critical = (Exp, Exp)
 
 -- TODO(sandy): ensure different var names
-criticalPairs :: Law a -> Law b -> [Critical]
+criticalPairs :: Law' -> Law' -> [Critical]
 criticalPairs other me = do
   let (otherlhs, otherrhs)
-        = renameVars (++ "1") (lawLhsExp other, lawRhsExp other)
+        = renameVars (++ "1") (law'LhsExp other, law'RhsExp other)
       (melhs, merhs)
-        = renameVars (++ "2") (lawLhsExp me, lawRhsExp me)
+        = renameVars (++ "2") (law'LhsExp me, law'RhsExp me)
 
   pat <- subexps melhs
   Just subs <- pure $ unify (seExp pat) otherlhs
-  traceM $ "unified"
-  traceM $ pprint (seExp pat)
-  traceM $ "with"
-  traceM $ pprint otherlhs
-  pure $ sub subs (merhs, replaceSubexp pat (const otherrhs) melhs)
+  let res = rebindVars subs (merhs, replaceSubexp pat (const otherrhs) melhs)
+  guard $ uncurry (/=) res
+  let (a,b) = res
+  pure (min a b, max a b)
 
 
 data SubExp = SubExp

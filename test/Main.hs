@@ -4,19 +4,17 @@
 {-# LANGUAGE TypeApplications      #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
-{-# OPTIONS_GHC -ddump-splices     #-}
+-- {-# OPTIONS_GHC -ddump-splices     #-}
 
 -- module Main where
 
 import           Data.Function
 import           Data.List (nub)
 import qualified Data.Set as S
-import           Data.Typeable
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers
 import           Test.QuickCheck.Checkers.Algebra
-import           Test.QuickCheck.Checkers.Algebra.Unification
-import           Language.Haskell.TH.Ppr
+import           Test.QuickCheck.Checkers.Algebra.TH
 
 
 data Bool2 = Bool2
@@ -91,20 +89,28 @@ remove :: Eq a => a -> Foo a -> Foo a
 remove a (Foo ms c) = Foo (filter (/= a) ms) c
 
 get :: Int -> String -> Bool
-get = undefined
-
 set :: Int -> Bool -> String -> String
+
+get = undefined
 set = undefined
 
 
-getsetlaw =
-  $(law [e|
-    get i (set i x s) == x
-    |])
+jazz :: a
+jazz = $(implicationsOf' [e| do
+  law "set/get"    (set i (get i s) s == s)
+  law "get/set"    (get i (set i x s) == x)
+  law "set mempty" (set i x mempty == mempty)
+  law "set mappend" (set i x (s1 <> s2) == set i x s1 <> set i x s2)
+  |])
 
-setmempty =
-  $(law [e|
-    set i x mempty == mempty
-    |])
+-- getsetlaw =
+--   $(law [e|
+--     get i (set i x s) == x
+--     |])
+
+-- setmempty =
+--   $(law [e|
+--     set i x mempty == mempty
+--     |])
 
 

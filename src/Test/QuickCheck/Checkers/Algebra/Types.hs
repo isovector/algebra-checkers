@@ -7,6 +7,13 @@ import Data.Dynamic
 import Language.Haskell.TH
 import Test.QuickCheck
 
+data Law' = Law'
+  { lawName :: String
+  , law'LhsExp :: Exp
+  , law'RhsExp :: Exp
+  }
+  deriving (Eq, Ord, Show)
+
 data LawHand a = LawHand
   { lhDescriptor :: String
   , lhValue :: a
