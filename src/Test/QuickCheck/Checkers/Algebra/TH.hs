@@ -64,6 +64,7 @@ lawConf (DoE z) = do
         pure $ propTestEq lhs rhs
       tests = lhs_rhs_tests ++ critical_tests
   listE tests
+lawConf _ = error "you have to call lawConf with a do block"
 
 data Implication = Implication Exp Exp
 
@@ -79,7 +80,7 @@ implicationsOf (DoE z) = do
         guard $ l1 /= l2
         (lhs, rhs) <- criticalPairs l1 l2
         pure $ Implication lhs rhs
-  for_ (uniqueCriticals implications) $ \(Implication a b) -> do
+  for_ (uniqueImplications implications) $ \(Implication a b) -> do
     let vars = nub $ fmap nameBase $ unboundVars a ++ unboundVars b
     reportWarning $ mconcat
       [ "∀ "
@@ -89,11 +90,13 @@ implicationsOf (DoE z) = do
       , "\n     == "
       , pprint $ deModuleName b
       ]
-  [e| undefined |]
+  lawConf (DoE z)
+implicationsOf _ = error "you have to call implicationsOf with a do block"
 
 
-uniqueCriticals :: [Implication] -> [Implication]
-uniqueCriticals = nubBy (\(Implication a a') (Implication b b') -> equalUpToAlpha a b && equalUpToAlpha a' b')
+uniqueImplications :: [Implication] -> [Implication]
+uniqueImplications = nubBy (\(Implication a a') (Implication b b') ->
+  equalUpToAlpha a b && equalUpToAlpha a' b')
 
 collect :: Stmt -> Law'
 collect (NoBindS (VarE lawfn `AppE` LitE  (StringL lawname) `AppE`

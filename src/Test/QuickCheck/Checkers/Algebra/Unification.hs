@@ -113,7 +113,12 @@ replaceSubexp (SubExp _ ix) f old =
 
 
 equalUpToAlpha :: Exp -> Exp -> Bool
-equalUpToAlpha a b = maybe False (all isUnbound) $ unify a b
+equalUpToAlpha a b =
+  maybe
+    False
+    (\subst -> all isUnbound subst
+            && uncurry (==) (rebindVars subst (a, b)))
+    (unify a b)
   where
     isUnbound (UnboundVarE _) = True
     isUnbound _ = False

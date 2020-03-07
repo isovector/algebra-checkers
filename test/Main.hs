@@ -95,7 +95,7 @@ get = undefined
 set = undefined
 
 
-jazz :: a
+jazz :: [Property]
 jazz = $(implicationsOf' [e| do
   law "set/get"     (set i (get i s) s == s)
   law "get/set"     (get i (set i x s) == x)
