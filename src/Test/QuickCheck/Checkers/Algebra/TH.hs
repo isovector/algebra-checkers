@@ -13,7 +13,7 @@ import           Control.Monad
 import           Control.Monad.Trans.State
 import           Data.Char
 import           Data.Dynamic
-import           Data.List (nub, intercalate, nubBy)
+import           Data.List (nub, intercalate)
 import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Traversable
@@ -68,21 +68,46 @@ lawConf (DoE z) = do
   listE tests
 lawConf _ = error "you have to call lawConf with a do block"
 
-data Implication = Implication Exp Exp
+data ImplSort
+  = LawDefn String
+  | Interaction String String
+  deriving (Eq, Ord, Show)
+
+showImplSort :: ImplSort -> String
+showImplSort (LawDefn n) = "the definition of " ++ show n
+showImplSort (Interaction a b) =
+  mconcat
+    [ "an interaction between "
+    , show $ min a b
+    , " and "
+    , show $ max a b
+    ]
+
+data Implication = Implication
+  { implSort :: ImplSort
+  , implLhs :: Exp
+  , implRhs :: Exp
+  }
+
+instance Eq Implication where
+  Implication _ a a' == Implication _ b b' =
+    equalUpToAlpha a b && equalUpToAlpha a' b'
 
 implicationsOf' :: ExpQ -> ExpQ
 implicationsOf' = (implicationsOf =<<)
 
 implicationsOf :: Exp -> ExpQ
 implicationsOf (DoE z) = do
+  -- todo: base everything around the implication type
   let laws = fmap collect z
+      law_impls = fmap (\(Law' n a b) -> Implication (LawDefn n) a b) laws
       implications = do
         l1 <- laws
         l2 <- laws
         guard $ l1 /= l2
         (lhs, rhs) <- criticalPairs l1 l2
-        pure $ Implication lhs rhs
-  for_ (uniqueImplications implications) $ \(Implication a b) -> do
+        pure $ Implication (Interaction (lawName l1) (lawName l2)) lhs rhs
+  for_ (nub $ law_impls <> implications) $ \(Implication n a b) -> do
     let vars = nub $ fmap nameBase $ unboundVars a ++ unboundVars b
     reportWarning $ mconcat
       [ "∀ "
@@ -91,14 +116,12 @@ implicationsOf (DoE z) = do
       , pprint $ deModuleName a
       , "\n     == "
       , pprint $ deModuleName b
+      , "\n arising from "
+      , showImplSort n
       ]
   lawConf (DoE z)
 implicationsOf _ = error "you have to call implicationsOf with a do block"
 
-
-uniqueImplications :: [Implication] -> [Implication]
-uniqueImplications = nubBy (\(Implication a a') (Implication b b') ->
-  equalUpToAlpha a b && equalUpToAlpha a' b')
 
 collect :: Stmt -> Law'
 collect (LawStmt lawname exp1 exp2) = Law' lawname exp1 exp2
