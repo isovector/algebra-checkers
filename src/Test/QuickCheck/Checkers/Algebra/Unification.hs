@@ -2,6 +2,9 @@
 
 module Test.QuickCheck.Checkers.Algebra.Unification where
 
+import Debug.Trace
+import Control.Applicative
+import Control.Monad.State
 import           Control.Monad
 import           Data.Data
 import           Data.Function
@@ -13,6 +16,7 @@ import           Language.Haskell.TH
 import           Prelude hiding (exp)
 import           Test.QuickCheck.Checkers.Algebra.TH
 import           Test.QuickCheck.Checkers.Algebra.Types
+import Control.Monad.Trans.Writer
 
 
 testy :: Law x -> Maybe [(Name, Exp)]
@@ -28,31 +32,55 @@ unifySub :: Subst -> Exp -> Exp -> Maybe Subst
 unifySub s a b = fmap (s <>) $ on unify (sub s) a b
 
 
-subexprs :: Exp -> S.Set Exp
-subexprs = everything (<>) $ mkQ mempty $ \case
-  UnboundVarE _ -> mempty
-  e             -> S.singleton e
-
 
 type Critical = (Exp, Exp)
 
 -- TODO(sandy): ensure different var names
-criticalPairs :: Law a -> Law a -> [Critical]
+criticalPairs :: Law a -> Law b -> [Critical]
 criticalPairs other me = do
   let (otherlhs, otherrhs)
         = renameVars (++ "1") (lawLhsExp other, lawRhsExp other)
       (melhs, merhs)
         = renameVars (++ "2") (lawLhsExp me, lawRhsExp me)
 
-  -- pat <- S.toList $ subexprs me
-  Just subs <- pure $ unify otherlhs melhs
-  pure $ sub subs (merhs, otherrhs)
+  pat <- subexps melhs
+  Just subs <- pure $ unify (seExp pat) otherlhs
+  traceM $ "unified"
+  traceM $ pprint (seExp pat)
+  traceM $ "with"
+  traceM $ pprint otherlhs
+  pure $ sub subs (merhs, replaceSubexp pat (const otherrhs) melhs)
 
 
-data SubExpr = SubExpr
-  { seExpr  :: Exp
+data SubExp = SubExp
+  { seExp  :: Exp
   , seSubId :: Int
   } deriving (Eq, Ord, Show)
+
+
+subexps :: Exp -> [SubExp]
+subexps e =
+  flip evalState 0 $ execWriterT $
+    everywhereM (mkM  $ \e' -> do
+      ix <- get
+      modify (+1)
+      case e' of
+        UnboundVarE _ -> pure ()
+        se -> tell [(SubExp se ix)]
+      pure e'
+                             ) e
+
+
+replaceSubexp :: SubExp -> (Exp -> Exp) -> Exp -> Exp
+replaceSubexp (SubExp _ ix) f old =
+  flip evalState 0 $
+    everywhereM (mkM $ \e' -> do
+      ix' <- get
+      modify (+1)
+      pure $ case ix == ix' of
+        True  -> f e'
+        False -> e'
+                ) old
 
 
 unify :: Exp -> Exp -> Maybe Subst
@@ -94,4 +122,11 @@ unify (SigE exp1 t1) (SigE exp2 t2) = do
 unify a b = do
   guard $ a == b
   pure mempty
+
+pprintcrit :: Critical -> IO ()
+pprintcrit (exp1, exp2) = do
+  putStrLn $ pprint exp1
+  putStrLn $ pprint exp2
+  putStrLn ""
+  putStrLn ""
 

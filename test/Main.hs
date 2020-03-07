@@ -6,7 +6,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 {-# OPTIONS_GHC -ddump-splices     #-}
 
-module Main where
+-- module Main where
 
 import           Data.Function
 import           Data.List (nub)
@@ -51,12 +51,12 @@ deno_and2 x y = model x && model y
 
 
 
-main :: IO ()
-main = quickBatch $ mconcat
-  [ deno_not2 `denotationFor` not2
-  , deno_and2 `denotationFor` and2
-  , ("laws", [("k", confluentModel (commutLaw @Int) onlythreeLaw)])
-  ]
+-- main :: IO ()
+-- main = quickBatch $ mconcat
+--   [ deno_not2 `denotationFor` not2
+--   , deno_and2 `denotationFor` and2
+--   , ("laws", [("k", confluentModel (commutLaw @Int) onlythreeLaw)])
+--   ]
 
 
 instance EqProp a => EqProp (S.Set a) where
@@ -90,24 +90,21 @@ size (Foo ms _) = length ms
 remove :: Eq a => a -> Foo a -> Foo a
 remove a (Foo ms c) = Foo (filter (/= a) ms) c
 
+get :: Int -> String -> Bool
+get = undefined
 
-commutLaw :: (Typeable z, Show z, Eq z, Arbitrary z) => Law (Foo z)
-commutLaw =
+set :: Int -> Bool -> String -> String
+set = undefined
+
+
+getsetlaw =
   $(law [e|
-    insert a (insert b c) == insert b (insert a c)
+    get i (set i x s) == x
     |])
 
-onlythreeLaw :: (Typeable z, Show z, Eq z, Arbitrary z) => Law (Foo z)
-onlythreeLaw =
+setmempty =
   $(law [e|
-    insert a (insert b (insert c empty)) == insert b (insert c empty)
-    |])
-
-
-misc :: (Typeable z, Show z, Eq z, Arbitrary z, Num z) => Law (Foo z)
-misc =
-  $(law [e|
-    insert a (insert a empty) == insert 9 (insert b c)
+    set i x mempty == mempty
     |])
 
 

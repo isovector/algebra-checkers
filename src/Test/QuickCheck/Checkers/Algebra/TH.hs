@@ -19,6 +19,7 @@ import           Language.Haskell.TH
 import           Language.Haskell.TH.Orphans ()
 import           Language.Haskell.TH.Syntax
 import           Test.QuickCheck
+-- import           Test.QuickCheck.Checkers (TestBatch)
 import           Test.QuickCheck.Checkers.Algebra.Types
 
 
@@ -72,6 +73,17 @@ renameVars f = everywhere $ mkT $ \case
 
 mkMap :: [Name] -> [a] -> (a -> b) -> M.Map Name b
 mkMap vars as f = M.fromList . zip vars $ fmap f as
+
+
+propTestEq :: Exp -> Exp -> ExpQ
+propTestEq exp1 exp2 = do
+  let vars = nub $ unboundVars exp1 ++ unboundVars exp2
+  names <- for vars $ newName . nameBase
+  [e|
+    property $(lamE (fmap varP names) [e|
+      $(pure exp1) =-= $(pure exp2)
+      |])
+    |]
 
 
 law :: ExpQ -> ExpQ
