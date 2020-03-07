@@ -13,7 +13,6 @@ import           Data.List (nub)
 import qualified Data.Set as S
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers
-import           Test.QuickCheck.Checkers.Algebra
 import           Test.QuickCheck.Checkers.Algebra.TH
 
 
@@ -103,15 +102,4 @@ jazz = $(implicationsOf'
   law "set mempty"  (set i x mempty == mempty)
   law "set mappend" (set i x (s1 <> s2) == set i x s1 <> set i x s2)
   |])
-
--- getsetlaw =
---   $(law [e|
---     get i (set i x s) == x
---     |])
-
--- setmempty =
---   $(law [e|
---     set i x mempty == mempty
---     |])
-
 

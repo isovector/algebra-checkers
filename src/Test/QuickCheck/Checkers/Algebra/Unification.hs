@@ -20,13 +20,6 @@ deModuleName = everywhere $ mkT $ \case
   n -> mkName $ nameBase n
 
 
-getBinds :: Exp -> [Stmt]
-getBinds = everything (++) $
-  mkQ [] $ \case
-    x@BindS{} -> [x]
-    _ -> []
-
-
 unboundVars :: Exp -> [Name]
 unboundVars = everything (++) $
   mkQ [] $ \case
@@ -49,10 +42,6 @@ renameVars f = everywhere $ mkT $ \case
   t -> t
 
 
-testy :: Law x -> Maybe [(Name, Exp)]
-testy (Law _ _ lhs rhs) = fmap M.toList $ unify lhs rhs
-
-
 type Subst = M.Map Name Exp
 
 sub :: Data a => Subst -> a -> a
@@ -65,13 +54,12 @@ unifySub s a b = fmap (s <>) $ on unify (sub s) a b
 
 type Critical = (Exp, Exp)
 
--- TODO(sandy): ensure different var names
-criticalPairs :: Law' -> Law' -> [Critical]
+criticalPairs :: Law -> Law -> [Critical]
 criticalPairs other me = do
   let (otherlhs, otherrhs)
-        = renameVars (++ "1") (law'LhsExp other, law'RhsExp other)
+        = renameVars (++ "1") (lawLhsExp other, lawRhsExp other)
       (melhs, merhs)
-        = renameVars (++ "2") (law'LhsExp me, law'RhsExp me)
+        = renameVars (++ "2") (lawLhsExp me, lawRhsExp me)
 
   pat <- subexps melhs
   Just subs <- pure $ unify (seExp pat) otherlhs
@@ -80,11 +68,6 @@ criticalPairs other me = do
   let (a,b) = res
   pure (min a b, max a b)
 
-
-data SubExp = SubExp
-  { seExp  :: Exp
-  , seSubId :: Int
-  } deriving (Eq, Ord, Show)
 
 
 subexps :: Exp -> [SubExp]
@@ -163,11 +146,4 @@ unify (SigE exp1 t1) (SigE exp2 t2) = do
 unify a b = do
   guard $ a == b
   pure mempty
-
-pprintcrit :: Critical -> IO ()
-pprintcrit (exp1, exp2) = do
-  putStrLn $ pprint exp1
-  putStrLn $ pprint exp2
-  putStrLn ""
-  putStrLn ""
 

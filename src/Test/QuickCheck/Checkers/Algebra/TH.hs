@@ -7,38 +7,16 @@
 module Test.QuickCheck.Checkers.Algebra.TH where
 
 
--- import           Test.QuickCheck.Checkers (TestBatch)
+import Control.Monad
 import Data.Foldable
-import           Control.Monad
-import           Control.Monad.Trans.State
-import           Data.Char
-import           Data.Dynamic
-import           Data.List (nub, intercalate)
-import qualified Data.Map as M
-import           Data.Maybe
-import           Data.Traversable
-import           Language.Haskell.TH
-import           Test.QuickCheck hiding (collect)
-import           Test.QuickCheck.Checkers.Algebra.Types
-import           Test.QuickCheck.Checkers.Algebra.Unification
+import Data.List (nub, intercalate)
+import Data.Traversable
+import Language.Haskell.TH
+import Test.QuickCheck hiding (collect)
+import Test.QuickCheck.Checkers.Algebra.Types
+import Test.QuickCheck.Checkers.Algebra.Unification
 
 
-
-biasedGenerate :: [a] -> Gen a -> Gen a
-biasedGenerate [] gena = gena
-biasedGenerate as gena =
-  frequency
-    [ (1, elements as)
-    , (1, gena)
-    ]
-
-
-getDyns :: (Typeable a, Monad m) => StateT [Dynamic] m [a]
-getDyns = fmap (mapMaybe fromDynamic) get
-
-
-mkMap :: [Name] -> [a] -> (a -> b) -> M.Map Name b
-mkMap vars as f = M.fromList . zip vars $ fmap f as
 
 
 propTestEq :: Exp -> Exp -> ExpQ
@@ -57,7 +35,7 @@ lawConf' = (lawConf =<<)
 lawConf :: Exp -> ExpQ
 lawConf (DoE z) = do
   let laws = fmap collect z
-      lhs_rhs_tests = fmap (\(Law' _ a b) -> propTestEq a b) laws
+      lhs_rhs_tests = fmap (\(Law _ a b) -> propTestEq a b) laws
       critical_tests = do
         l1 <- laws
         l2 <- laws
@@ -100,7 +78,7 @@ implicationsOf :: Exp -> ExpQ
 implicationsOf (DoE z) = do
   -- todo: base everything around the implication type
   let laws = fmap collect z
-      law_impls = fmap (\(Law' n a b) -> Implication (LawDefn n) a b) laws
+      law_impls = fmap (\(Law n a b) -> Implication (LawDefn n) a b) laws
       implications = do
         l1 <- laws
         l2 <- laws
@@ -123,9 +101,9 @@ implicationsOf (DoE z) = do
 implicationsOf _ = error "you have to call implicationsOf with a do block"
 
 
-collect :: Stmt -> Law'
-collect (LawStmt lawname exp1 exp2) = Law' lawname exp1 exp2
-collect (LawDollar lawname exp1 exp2) = Law' lawname exp1 exp2
+collect :: Stmt -> Law
+collect (LawStmt lawname exp1 exp2) = Law lawname exp1 exp2
+collect (LawDollar lawname exp1 exp2) = Law lawname exp1 exp2
 collect _ = error
   "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
 
@@ -155,29 +133,4 @@ pattern LawDollar lawname exp1 exp2 <- NoBindS
 
 law :: String -> Bool -> a
 law = undefined
-
-
-------------------------------------------------------------------------------
--- | A bare-boned implementation of printf. This function will replace tokens
--- of the form @"%n"@ in the first string with @args !! n@.
---
--- This will only work for indexes up to 9.
---
--- For example:
---
--- >>> printf "hello %1 %2% %3 %1" ["world", "50"]
--- "hello world 50% %3 world"
-printf :: String -> [String] -> String
-printf str args = splitArgs str
-  where
-    splitArgs :: String -> String
-    splitArgs s =
-      case break (== '%') s of
-        (as, "") -> as
-        (as, _ : b : bs)
-          | isDigit b
-          , let d = read [b] - 1
-          , d < length args
-            -> as ++ (args !! d) ++ splitArgs bs
-        (as, _ : bs) ->  as ++ "%" ++ splitArgs bs
 
