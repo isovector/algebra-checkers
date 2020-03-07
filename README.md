@@ -51,12 +51,12 @@ lawTests = $(lawConf'
 Furthermore, `algebra-checkers` will generate tests to show that these laws are
 confluent. We can run these tests via `quickCheck lawTests`.
 
-If we use the `implicationsOf'` function instead of `lawConf'`,
+If we use the `theoremsOf'` function instead of `lawConf'`,
 `algebra-checkers` will dump out all the additional theorems it has proven about
 our algebra. This serves as a good sanity check:
 
 ```
-Implications:
+Theorems:
 
 • set i x' (set i x s) == set i x' s (definition of "set/set")
 • set i (get i s) s == s (definition of "set/get")

@@ -93,7 +93,7 @@ get = undefined
 set = undefined
 
 lawTests :: [Property]
-lawTests = $(implicationsOf'
+lawTests = $(theoremsOf'
   [e| do
   law "set/set"     (set i x' (set i x s) == set i x' s)
   law "set/get"    $ set i (get i s) s == s

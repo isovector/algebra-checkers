@@ -23,8 +23,8 @@ ppr :: Ppr a => a -> Doc
 ppr = to_HPJ_Doc . Ppr.ppr
 
 
-propTestEq :: Implication -> ExpQ
-propTestEq (Implication _ exp1 exp2) = do
+propTestEq :: Theorem -> ExpQ
+propTestEq (Theorem _ exp1 exp2) = do
   let vars = nub $ unboundVars exp1 ++ unboundVars exp2
   names <- for vars $ newName . nameBase
   [e|
@@ -37,21 +37,21 @@ lawConf' :: ExpQ -> ExpQ
 lawConf' = (lawConf =<<)
 
 lawConf :: Exp -> ExpQ
-lawConf = listE . fmap propTestEq . implicate . parseLaws
+lawConf = listE . fmap propTestEq . theorize . parseLaws
 
 parseLaws :: Exp -> [Law]
 parseLaws (DoE z) = fmap collect z
 parseLaws _ = error "you must call parseLaws with a do block"
 
-data ImplSort
+data TheoremSource
   = LawDefn String
   | Interaction String String
   deriving (Eq, Ord, Show)
 
-showImplSort :: ImplSort -> Doc
-showImplSort (LawDefn n) =
+showTheoremSource :: TheoremSource -> Doc
+showTheoremSource (LawDefn n) =
   text "definition of" <+> colorize lawColor (text $ show n)
-showImplSort (Interaction a b) =
+showTheoremSource (Interaction a b) =
   hsep
     [ text "implied by"
     , colorize lawColor $ text $ show $ min a b
@@ -63,41 +63,41 @@ lawColor :: Color
 lawColor = Yellow
 
 
-data Implication = Implication
-  { implSort :: ImplSort
-  , implLhs  :: Exp
-  , implRhs  :: Exp
+data Theorem = Theorem
+  { theoremSort :: TheoremSource
+  , theoremLhs  :: Exp
+  , theoremRhs  :: Exp
   }
 
-instance Eq Implication where
-  Implication _ a a' == Implication _ b b' =
+instance Eq Theorem where
+  Theorem _ a a' == Theorem _ b b' =
     equalUpToAlpha a b && equalUpToAlpha a' b'
 
-implicate :: [Law] -> [Implication]
-implicate laws =
-  let law_impls = fmap (\(Law n a b) -> Implication (LawDefn n) a b) laws
-      implications = do
+theorize :: [Law] -> [Theorem]
+theorize laws =
+  let law_defs = fmap (\(Law n a b) -> Theorem (LawDefn n) a b) laws
+      theorems = do
          l1 <- laws
          l2 <- laws
          guard $ l1 /= l2
          (lhs, rhs) <- criticalPairs l1 l2
-         pure $ Implication (Interaction (lawName l1) (lawName l2)) lhs rhs
-   in nub $ law_impls <> implications
+         pure $ Theorem (Interaction (lawName l1) (lawName l2)) lhs rhs
+   in nub $ law_defs <> theorems
 
 
-implicationsOf' :: ExpQ -> ExpQ
-implicationsOf' = (implicationsOf =<<)
+theoremsOf' :: ExpQ -> ExpQ
+theoremsOf' = (theoremsOf =<<)
 
 
-implicationsOf :: Exp -> ExpQ
-implicationsOf z = do
-  let impls = implicate $ parseLaws z
+theoremsOf :: Exp -> ExpQ
+theoremsOf z = do
+  let theorems = theorize $ parseLaws z
   runIO $ do
     putStrLn ""
-    putStrLn . render $ sep (text "Implications:" : text "" : fmap showImplication impls)
+    putStrLn . render $ sep (text "Theorems:" : text "" : fmap showTheorem theorems)
     putStrLn ""
     putStrLn ""
-  listE $ fmap propTestEq impls
+  listE $ fmap propTestEq theorems
 
 
 colorize :: Color -> Doc -> Doc
@@ -113,12 +113,12 @@ backcolorize c doc
   Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Background])
 
 
-showImplication :: Implication -> Doc
-showImplication (Implication n a b) = hang (text "•") 2 $
+showTheorem :: Theorem -> Doc
+showTheorem (Theorem n a b) = hang (text "•") 2 $
   sep
   [ hang (colorize exprColor $ ppr $ deModuleName a) 6
       $ hang (text "==") 4 $ (colorize exprColor $ ppr $ deModuleName b)
-  , nest 2 $ parens $ showImplSort n
+  , nest 2 $ parens $ showTheoremSource n
   ]
 
 exprColor :: Color
