@@ -89,14 +89,13 @@ remove a (Foo ms c) = Foo (filter (/= a) ms) c
 
 get :: Int -> String -> Bool
 set :: Int -> Bool -> String -> String
-
 get = undefined
 set = undefined
 
-
-jazz :: [Property]
-jazz = $(implicationsOf'
+lawTests :: [Property]
+lawTests = $(implicationsOf'
   [e| do
+  law "set/set"     (set i x' (set i x s) == set i x' s)
   law "set/get"    $ set i (get i s) s == s
   law "get/set"     (get i (set i x s) == x)
   law "set mempty"  (set i x mempty == mempty)

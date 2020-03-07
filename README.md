@@ -14,53 +14,72 @@ imagine we're writing an ADT:
 
 ```haskell
 data Foo a
+instance Semigroup (Foo a)
+instance Monoid (Foo a)
 
-empty :: Foo a
-insert :: a -> Foo a -> Foo a
-size :: Foo a -> Int
+data Key
+
+
+get :: Key -> Foo a -> a
+get = undefined
+
+set :: Key -> a -> Foo a -> Foo a
+set = undefined
 ```
 
-and would like to enforce the law of commutativity:
+Let's say we expect the lens laws to hold for `get` and `set`, as well for `set`
+to be a monoid homomorphism. We can express those facts to `algebra-checkers`
+and have it generate tests for us:
 
 ```haskell
-law insert a (insert b foo) = insert b (insert a foo)
+lawTests :: [Property]
+lawTests = $(lawConf'
+  [e| do
+  law "set/set"
+      (set i x' (set i x s) == set i x' s)
+  law "set/get"
+      (set i (get i s) s == s)
+  law "get/set"
+      (get i (set i x s) == x)
+  law "set mempty"
+      (set i x mempty == mempty)
+  law "set mappend"
+      (set i x (s1 <> s2) == set i x s1 <> set i x s2)
+  |])
 ```
 
-We can test this very naturally via:
+Furthermore, `algebra-checkers` will generate tests to show that these laws are
+confluent. We can run these tests via `quickCheck lawTests`.
 
-```haskell
-law_commutative :: (Eq a, EqProp a, Show a, Typeable a) => Law a
-law_commutative = $(law [|
-  insert a (insert b foo) == insert b (insert a foo)
-  |]
+If we use the `implicationsOf'` function instead of `lawConf'`,
+`algebra-checkers` will dump out all the additional theorems it has proven about
+our algebra. This serves as a good sanity check:
 
-
-main = quickCheck $ checkLaw (law_commutative @Int)
--- +++ OK, passed 100 tests.
+```
+• set i x' (set i x s) == set i x' s (definition of "set/set")
+• set i (get i s) s == s (definition of "set/get")
+• get i (set i x s) == x (definition of "get/set")
+• set i x mempty == mempty (definition of "set mempty")
+• set i x (s1 <> s2) == set i x s1 <> set i x s2
+    (definition of "set mappend")
+• set i1 (get i1 s2) s1 == set i1 x1 s1
+    (implied by "set/get" and "set/set")
+• set i1 (get i1 s1) s12 <> set i1 (get i1 s1) s22 == s12 <> s22
+    (implied by "set mappend" and "set/get")
+• get i1 mempty == x1 (implied by "get/set" and "set mempty")
+• set i1 x'2 (set i1 x1 s11 <> set i1 x1 s21)
+  == set i1 x'2 (s11 <> s21)
+    (implied by "set mappend" and "set/set")
+• get i1 (set i1 x1 s11 <> set i1 x1 s21) == x1
+    (implied by "get/set" and "set mappend")
 ```
 
-(note the double equals in the law's definition)
+Uh oh! Look at that!
 
-`algebra-checkers` can also prove that a set of laws are confluent. Let's add
-another law, attempting to enforce that `Foo` can only hold four elements:
-
-```haskell
-law_max4 :: (Eq a, EqProp a, Show a, Typeable a) => Law a
-law_max4 = $(law [|
-  insert a (insert b (insert c (insert d (insert e empty))))
-    == insert b (insert c (insert d (insert e empty)))
-  |]
+```
+• get i1 mempty == x1 (implied by "get/set" and "set mempty")
 ```
 
-Clearly `law_commutative` and `law_max4` are nonconfluent. `algebra-checkers`
-can show us this:
-
-```haskell
-main = quickCheck $ confluent (law_commutative @Int) law_max4
--- *** Failed! Falsified (after 4 tests):
--- insert (-2) (insert (-1) (insert (5) (insert (-1) (insert (-1) empty)))) /= insert (-1) (insert (5)
---  (insert (-1) (insert (-1) empty)))
--- insert (-1) (insert (-2) ([5])) == insert (-2) (insert (-1) ([5]))
--- insert (-1) (insert (5) (insert (-1) (insert (-1) empty))) /= insert (-2) (insert (-1) ([5]))
-```
+This is clearly a bogus theorem, which lets us know that "get/set" and "set
+mempty" are nonconfluent with one another!
 
