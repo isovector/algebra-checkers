@@ -116,10 +116,8 @@ backcolorize c doc
 showImplication :: Implication -> Doc
 showImplication (Implication n a b) = hang (text "•") 2 $
   sep
-  [ sep
-      [ colorize exprColor $ ppr $ deModuleName a
-      , text "==" <+> (colorize exprColor $ ppr $ deModuleName b)
-      ]
+  [ hang (colorize exprColor $ ppr $ deModuleName a) 6
+      $ hang (text "==") 4 $ (colorize exprColor $ ppr $ deModuleName b)
   , nest 2 $ parens $ showImplSort n
   ]
 
