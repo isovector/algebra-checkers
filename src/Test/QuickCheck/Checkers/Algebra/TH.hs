@@ -11,7 +11,7 @@ import           Control.Monad
 import           Control.Monad.Trans.State
 import           Data.Char
 import           Data.Dynamic
-import           Data.List (nub, intercalate)
+import           Data.List (nub, intercalate, nubBy)
 import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Traversable
@@ -79,7 +79,7 @@ implicationsOf (DoE z) = do
         guard $ l1 /= l2
         (lhs, rhs) <- criticalPairs l1 l2
         pure $ Implication lhs rhs
-  for_ implications $ \(Implication a b) -> do
+  for_ (uniqueCriticals implications) $ \(Implication a b) -> do
     let vars = nub $ fmap nameBase $ unboundVars a ++ unboundVars b
     reportWarning $ mconcat
       [ "∀ "
@@ -90,6 +90,10 @@ implicationsOf (DoE z) = do
       , pprint $ deModuleName b
       ]
   [e| undefined |]
+
+
+uniqueCriticals :: [Implication] -> [Implication]
+uniqueCriticals = nubBy (\(Implication a a') (Implication b b') -> equalUpToAlpha a b && equalUpToAlpha a' b')
 
 collect :: Stmt -> Law'
 collect (NoBindS (VarE lawfn `AppE` LitE  (StringL lawname) `AppE`

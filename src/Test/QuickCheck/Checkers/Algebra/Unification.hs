@@ -112,6 +112,13 @@ replaceSubexp (SubExp _ ix) f old =
                 ) old
 
 
+equalUpToAlpha :: Exp -> Exp -> Bool
+equalUpToAlpha a b = maybe False (all isUnbound) $ unify a b
+  where
+    isUnbound (UnboundVarE _) = True
+    isUnbound _ = False
+
+
 unify :: Exp -> Exp -> Maybe Subst
 unify (ParensE exp1) exp2 = unify exp1 exp2
 unify exp1 (ParensE exp2) = unify exp1 exp2

@@ -97,9 +97,9 @@ set = undefined
 
 jazz :: a
 jazz = $(implicationsOf' [e| do
-  law "set/get"    (set i (get i s) s == s)
-  law "get/set"    (get i (set i x s) == x)
-  law "set mempty" (set i x mempty == mempty)
+  law "set/get"     (set i (get i s) s == s)
+  law "get/set"     (get i (set i x s) == x)
+  law "set mempty"  (set i x mempty == mempty)
   law "set mappend" (set i x (s1 <> s2) == set i x s1 <> set i x s2)
   |])
 
