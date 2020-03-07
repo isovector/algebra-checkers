@@ -1,6 +1,8 @@
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE TemplateHaskell    #-}
-{-# LANGUAGE TypeApplications   #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE PatternSynonyms  #-}
+{-# LANGUAGE TemplateHaskell  #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns     #-}
 
 module Test.QuickCheck.Checkers.Algebra.TH where
 
@@ -99,13 +101,33 @@ uniqueImplications = nubBy (\(Implication a a') (Implication b b') ->
   equalUpToAlpha a b && equalUpToAlpha a' b')
 
 collect :: Stmt -> Law'
-collect (NoBindS (VarE lawfn `AppE` LitE  (StringL lawname) `AppE`
-  (InfixE (Just exp1) (VarE eq) (Just exp2))))
-    | eq == '(==)
-    , lawfn == 'law
-    = Law' lawname exp1 exp2
+collect (LawStmt lawname exp1 exp2) = Law' lawname exp1 exp2
+collect (LawDollar lawname exp1 exp2) = Law' lawname exp1 exp2
 collect _ = error
   "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
+
+pattern LawStmt :: String -> Exp -> Exp -> Stmt
+pattern LawStmt lawname exp1 exp2 <- NoBindS
+  (      VarE ((==) 'law -> True)
+  `AppE` LitE  (StringL lawname)
+  `AppE` (InfixE (Just exp1)
+                 (VarE ((==) '(==) -> True))
+                 (Just exp2)
+         )
+  )
+
+pattern LawDollar :: String -> Exp -> Exp -> Stmt
+pattern LawDollar lawname exp1 exp2 <- NoBindS
+  (InfixE
+    (Just (  VarE ((==) 'law -> True)
+      `AppE` LitE  (StringL lawname)))
+    (VarE ((==) '($) -> True))
+    (Just (InfixE (Just exp1)
+                  (VarE ((==) '(==) -> True))
+                  (Just exp2)
+          )
+    )
+  )
 
 
 law :: String -> Bool -> a
