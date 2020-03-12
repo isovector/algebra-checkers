@@ -119,10 +119,6 @@ sanityCheck' (Theorem _ lhs rhs) =
 implies :: Bool -> Bool -> Bool
 implies p q = not p || q
 
-  --  in all (exists_in lhs) (matchableMetaVars rhs)
-  --  && all (exists_in rhs) (matchableMetaVars lhs)
-  --  && bool True (lhs == rhs) (isFullyMatchable lhs && isFullyMatchable rhs)
-
 matchableMetaVars :: Exp -> [Name]
 matchableMetaVars (UnboundVarE n) = [n]
 matchableMetaVars e =
@@ -173,7 +169,7 @@ theoremsOf z = do
       putStrLn . render $ sep (text "Contradictions:" : text "" : fmap showTheorem contradicts)
       putStrLn ""
       putStrLn ""
-  listE []
+  listE $ fmap propTestEq theorems
 
 
 colorize :: Color -> Doc -> Doc
@@ -201,14 +197,14 @@ showTheorem thm@(Theorem n a b) = hang (text "•") 2 $
   [ case sanityCheck' thm of
       Nothing ->
         hang (colorize exprColor $ ppr $ deModuleName a) 6
-          . hang (text "==") 4
+          . hang (text "=") 4
           . colorize exprColor
           . ppr
           $ deModuleName b
       Just contradiction ->
         vcat
           [ backcolorize Red $ hang (ppr $ deModuleName a) 6
-              . hang (text "==") 4
+              . hang (text "=") 4
               . ppr
               $ deModuleName b
           , nest 2 $ pprContradiction contradiction
@@ -353,7 +349,7 @@ plural _ many _  = text many
 pprContradiction :: ContradictionReason -> Doc
 pprContradiction (UnboundMatchableVars vars) =
   sep
-    [ text "the matchable"
+    [ text "the"
     , plural "variable" "variables" vars
     , sep $ punctuate (char ',') $ fmap ppr vars
     , nest 4 $ sep

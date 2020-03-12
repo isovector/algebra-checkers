@@ -12,13 +12,6 @@ packages:
   original:
     hackage: monad-gen-0.3.0.1
 - completed:
-    hackage: checkers-0.5.4@sha256:c5450a45b94015e99fac25773f6de49557386ce1b170023a194c084fb7a9da3d,2124
-    pantry-tree:
-      size: 1267
-      sha256: 92af2d6367fa2facf073145b53bc094f159332d1e5c6bfffef2e383a058b450e
-  original:
-    hackage: checkers-0.5.4
-- completed:
     hackage: ansi-terminal-0.10.3@sha256:e2fbcef5f980dc234c7ad8e2fa433b0e8109132c9e643bc40ea5608cd5697797,3226
     pantry-tree:
       size: 1461
