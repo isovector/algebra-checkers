@@ -96,12 +96,12 @@ sanityCheck = isNothing . sanityCheck'
 sanityCheck' :: Theorem -> Maybe ContradictionReason
 sanityCheck' (Theorem _ lhs rhs) =
   either Just (const Nothing) $ foldr1 (>>)
-    [ ensure_bound_matches lhs rhs
+    [ lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor lhs
+    , lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor rhs
+    , ensure_bound_matches lhs rhs
     , ensure_bound_matches rhs lhs
     , bool (Left UnequalValues) (Right ()) $
         on (&&) isFullyMatchable lhs rhs `implies` (==) lhs rhs
-    , lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor lhs
-    , lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor rhs
     ]
   where
     is_unbound_ctor (UnboundVarE n) = isUpper . head $ nameBase n
@@ -197,18 +197,21 @@ backcolorize c doc
 showTheorem :: Theorem -> Doc
 showTheorem thm@(Theorem n a b) = hang (text "•") 2 $
   sep
-  [ case sanityCheck thm of
-      True ->
+  [ case sanityCheck' thm of
+      Nothing ->
         hang (colorize exprColor $ ppr $ deModuleName a) 6
           . hang (text "==") 4
           . colorize exprColor
           . ppr
           $ deModuleName b
-      False ->
-        backcolorize Red $ hang (ppr $ deModuleName a) 6
-          . hang (text "==") 4
-          . ppr
-          $ deModuleName b
+      Just contradiction ->
+        vcat
+          [ backcolorize Red $ hang (ppr $ deModuleName a) 6
+              . hang (text "==") 4
+              . ppr
+              $ deModuleName b
+          , nest 2 $ pprContradiction contradiction
+          ]
   , nest 2 $ parens $ showTheoremSource n
   ]
 
@@ -341,4 +344,32 @@ data ContradictionReason
   | UnequalValues
   | UnknownConstructors [Name]
   deriving (Eq, Ord, Show)
+
+plural :: String -> String -> [a] -> Doc
+plural one _ [_] = text one
+plural _ many _  = text many
+
+pprContradiction :: ContradictionReason -> Doc
+pprContradiction (UnboundMatchableVars vars) =
+  sep
+    [ text "the matchable"
+    , plural "variable" "variables" vars
+    , sep $ punctuate (char ',') $ fmap ppr vars
+    , nest 4 $ sep
+        [ plural "is" "are" vars
+        , text "undetermined"
+        ]
+    ]
+pprContradiction (UnknownConstructors vars) =
+  sep
+    [ text "the"
+    , plural "constructor" "constructors" vars
+    , sep $ punctuate (char ',') $ fmap ppr vars
+    , nest 4 $ sep
+        [ plural "does" "do" vars
+        , text "not exist"
+        ]
+    ]
+pprContradiction UnequalValues =
+  text "unequal values"
 
