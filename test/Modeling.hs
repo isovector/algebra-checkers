@@ -109,6 +109,7 @@ laws = $(theoremsOf' [| do
   homo @Monoid $ \h -> get rp h
   homo @Monoid $ \h -> set rp p h
   law "jank/get" $ Just 5 == Nothing
+  law "bad/get" $ Left x == Right (insert x x)
   law "spank/get" $ Spanky Nuts == Ten
   law "set/get" $ maybe h (flip (set rp) h) (get rp h) == h
   law "set/set" $ set rp p' (set rp p h) == set rp p' h

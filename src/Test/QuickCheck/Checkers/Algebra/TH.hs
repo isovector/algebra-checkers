@@ -18,7 +18,7 @@ import qualified Data.Kind as Kind
 import           Data.List (nub, foldl', partition)
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Map as M
-import           Data.Maybe (isNothing)
+import           Data.Maybe (isNothing, fromMaybe)
 import           Data.Semigroup
 import           Data.Traversable
 import           Language.Haskell.TH (runQ)
@@ -96,12 +96,13 @@ sanityCheck = isNothing . sanityCheck'
 sanityCheck' :: Theorem -> Maybe ContradictionReason
 sanityCheck' (Theorem _ lhs rhs) =
   either Just (const Nothing) $ foldr1 (>>)
-    [ lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor lhs
-    , lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor rhs
+    [ lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor (lhs, rhs)
     , ensure_bound_matches lhs rhs
     , ensure_bound_matches rhs lhs
     , bool (Left UnequalValues) (Right ()) $
         on (&&) isFullyMatchable lhs rhs `implies` (==) lhs rhs
+    , bool (Left UnequalValues) (Right ()) $ fromMaybe True $
+        liftM2 (==) (matchableAppHead lhs) (matchableAppHead rhs)
     ]
   where
     is_unbound_ctor (UnboundVarE n) = isUpper . head $ nameBase n
