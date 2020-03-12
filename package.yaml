@@ -32,6 +32,7 @@ dependencies:
 - monad-gen
 - pretty
 - ansi-terminal
+- free
 
 ghc-options:
   - -Wall

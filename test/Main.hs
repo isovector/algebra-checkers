@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TemplateHaskell       #-}
@@ -95,6 +96,14 @@ get :: Int -> String -> Any
 set :: Int -> Any -> String -> String
 get = undefined
 set = undefined
+
+
+-- instance Model Bar Bool where
+--   model = Temp
+
+class Model a b => Unmodel a b where
+  unmodel :: b -> a
+
 
 lawTests :: [Property]
 lawTests = $(theoremsOf'

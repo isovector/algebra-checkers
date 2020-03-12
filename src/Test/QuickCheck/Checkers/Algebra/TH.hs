@@ -4,25 +4,35 @@
 {-# LANGUAGE PatternSynonyms     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE ViewPatterns        #-}
 
 module Test.QuickCheck.Checkers.Algebra.TH where
 
-
+import Data.Char
 import           Control.Monad
-import           Data.List (nub, foldl')
+import           Data.Bool
+import           Data.Function (on)
+import           Data.Generics.Schemes (listify)
+import qualified Data.Kind as Kind
+import           Data.List (nub, foldl', partition)
+import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Map as M
+import           Data.Maybe (isNothing)
+import           Data.Semigroup
 import           Data.Traversable
+import           Language.Haskell.TH (runQ)
 import qualified Language.Haskell.TH as Ppr (ppr)
 import           Language.Haskell.TH hiding (ppr, Arity)
 import           Language.Haskell.TH.PprLib (to_HPJ_Doc)
+import           Language.Haskell.TH.Syntax (lift)
+import           Prelude hiding (exp)
 import           System.Console.ANSI
 import           Test.QuickCheck hiding (collect)
 import           Test.QuickCheck.Checkers.Algebra.Types
 import           Test.QuickCheck.Checkers.Algebra.Unification
 import qualified Text.PrettyPrint.HughesPJ as Ppr
 import           Text.PrettyPrint.HughesPJ hiding ((<>))
-import qualified Data.Kind as Kind
 
 
 ppr :: Ppr a => a -> Doc
@@ -30,12 +40,13 @@ ppr = to_HPJ_Doc . Ppr.ppr
 
 
 propTestEq :: Theorem -> ExpQ
-propTestEq (Theorem _ exp1 exp2) = do
+propTestEq t@(Theorem _ exp1 exp2) = do
   let vars = nub $ unboundVars exp1 ++ unboundVars exp2
   names <- for vars $ newName . nameBase
   [e|
-    property $(lamE (fmap varP names) [e|
-      $(pure exp1) =-= $(pure exp2)
+    counterexample $(lift $ render $ showTheorem t) $
+      property $(lamE (fmap varP names) [e|
+       $(pure exp1) =-= $(pure exp2)
       |])
     |]
 
@@ -79,12 +90,66 @@ instance Eq Theorem where
   Theorem _ a a' == Theorem _ b b' =
     equalUpToAlpha a b && equalUpToAlpha a' b'
 
+sanityCheck :: Theorem -> Bool
+sanityCheck = isNothing . sanityCheck'
+
+sanityCheck' :: Theorem -> Maybe ContradictionReason
+sanityCheck' (Theorem _ lhs rhs) =
+  either Just (const Nothing) $ foldr1 (>>)
+    [ ensure_bound_matches lhs rhs
+    , ensure_bound_matches rhs lhs
+    , bool (Left UnequalValues) (Right ()) $
+        on (&&) isFullyMatchable lhs rhs `implies` (==) lhs rhs
+    , lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor lhs
+    , lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor rhs
+    ]
+  where
+    is_unbound_ctor (UnboundVarE n) = isUpper . head $ nameBase n
+    is_unbound_ctor _ = False
+
+    ensure_bound_matches a b
+      = lift_error UnboundMatchableVars
+      $ filter (not . exists_in a)
+      $ matchableMetaVars b
+    lift_error _ [] = Right ()
+    lift_error ctor x = Left $ ctor x
+    exists_in exp var = not . null $ listify (== var) exp
+
+implies :: Bool -> Bool -> Bool
+implies p q = not p || q
+
+  --  in all (exists_in lhs) (matchableMetaVars rhs)
+  --  && all (exists_in rhs) (matchableMetaVars lhs)
+  --  && bool True (lhs == rhs) (isFullyMatchable lhs && isFullyMatchable rhs)
+
+matchableMetaVars :: Exp -> [Name]
+matchableMetaVars (UnboundVarE n) = [n]
+matchableMetaVars e =
+  case matchableAppHead e of
+    Just _ -> go e
+    Nothing -> []
+  where
+    go (exp1 `AppE` exp2) =
+      go exp1 ++ matchableMetaVars exp2
+    go _ = []
+
+isFullyMatchable :: Exp -> Bool
+isFullyMatchable (ConE _) = True
+isFullyMatchable (TupE es) = all isFullyMatchable es
+isFullyMatchable (ListE es) = all isFullyMatchable es
+isFullyMatchable (LitE _) = True
+isFullyMatchable (UnboundVarE _) = True
+isFullyMatchable (AppE (UnboundVarE _) _) = False
+isFullyMatchable (AppE exp1 exp2) = isFullyMatchable exp1 && isFullyMatchable exp2
+isFullyMatchable _ = False
+
 theorize :: [Law] -> [Theorem]
 theorize laws =
   let law_defs = fmap (\(Law n a b) -> Theorem (LawDefn n) a b) laws
+      sane_laws = filter (\(Law _ a b) -> sanityCheck $ Theorem undefined a b) laws
       theorems = do
-         l1 <- laws
-         l2 <- laws
+         l1 <- sane_laws
+         l2 <- sane_laws
          guard $ l1 /= l2
          (lhs, rhs) <- criticalPairs l1 l2
          pure $ Theorem (Interaction (lawName l1) (lawName l2)) lhs rhs
@@ -97,13 +162,17 @@ theoremsOf' = (theoremsOf =<<)
 
 theoremsOf :: Exp -> ExpQ
 theoremsOf z = do
-  let theorems = theorize $ parseLaws z
+  let (theorems, contradicts) = partition sanityCheck $ theorize $ parseLaws z
   runIO $ do
     putStrLn ""
     putStrLn . render $ sep (text "Theorems:" : text "" : fmap showTheorem theorems)
     putStrLn ""
     putStrLn ""
-  listE $ fmap propTestEq theorems
+    when (not $ null contradicts) $ do
+      putStrLn . render $ sep (text "Contradictions:" : text "" : fmap showTheorem contradicts)
+      putStrLn ""
+      putStrLn ""
+  listE []
 
 
 colorize :: Color -> Doc -> Doc
@@ -112,18 +181,34 @@ colorize c doc
   Ppr.<> doc
   Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Foreground])
 
+deepColorize :: Color -> Doc -> Doc
+deepColorize c doc
+       = zeroWidthText (setSGRCode [SetColor Foreground Vivid c, SetConsoleIntensity BoldIntensity])
+  Ppr.<> doc
+  Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Foreground, SetConsoleIntensity NormalIntensity])
+
 backcolorize :: Color -> Doc -> Doc
 backcolorize c doc
-       = zeroWidthText (setSGRCode [SetColor Background Vivid c])
+       = zeroWidthText (setSGRCode [SetColor Background Dull c])
   Ppr.<> doc
   Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Background])
 
 
 showTheorem :: Theorem -> Doc
-showTheorem (Theorem n a b) = hang (text "•") 2 $
+showTheorem thm@(Theorem n a b) = hang (text "•") 2 $
   sep
-  [ hang (colorize exprColor $ ppr $ deModuleName a) 6
-      $ hang (text "==") 4 $ (colorize exprColor $ ppr $ deModuleName b)
+  [ case sanityCheck thm of
+      True ->
+        hang (colorize exprColor $ ppr $ deModuleName a) 6
+          . hang (text "==") 4
+          . colorize exprColor
+          . ppr
+          $ deModuleName b
+      False ->
+        backcolorize Red $ hang (ppr $ deModuleName a) 6
+          . hang (text "==") 4
+          . ppr
+          $ deModuleName b
   , nest 2 $ parens $ showTheoremSource n
   ]
 
@@ -187,8 +272,14 @@ homo
     -> law
 homo = undefined
 
+matchableAppHead :: Exp -> Maybe Name
+matchableAppHead (ConE n) = Just n
+matchableAppHead (AppE f _) = matchableAppHead f
+matchableAppHead _ = Nothing
+
 appHead :: Exp -> Maybe Name
 appHead (VarE n) = Just n
+appHead (ConE n) = Just n
 appHead (AppE f _) = appHead f
 appHead _ = Nothing
 
@@ -243,4 +334,11 @@ knownHomos nm
   | nm == ''Ord
         = [ ('compare, Prefix 2) ]
   | otherwise = error $ "unsupported homo type " ++ show nm
+
+
+data ContradictionReason
+  = UnboundMatchableVars [Name]
+  | UnequalValues
+  | UnknownConstructors [Name]
+  deriving (Eq, Ord, Show)
 
