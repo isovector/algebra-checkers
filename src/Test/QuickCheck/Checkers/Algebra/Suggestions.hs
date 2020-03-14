@@ -3,6 +3,7 @@
 
 module Test.QuickCheck.Checkers.Algebra.Suggestions where
 
+import Data.List
 import Data.Char
 import Control.Monad
 import Prelude hiding (exp)
@@ -20,25 +21,39 @@ import Data.Group
 
 
 data Suggestion
-  = HomoSuggestion Name Type Type Exp
+  = HomoSuggestion Name Name Int Type Type Exp
   deriving (Eq, Ord, Show)
+
+homoSuggestionEq :: Suggestion -> Suggestion -> Bool
+homoSuggestionEq (HomoSuggestion _ fn1 ix1 _ _ _)
+                 (HomoSuggestion _ fn2 ix2 _ _ _) = fn1 == fn2
+                                                 && ix1 == ix2
 
 
 pprSuggestion :: Suggestion -> Doc
-pprSuggestion (HomoSuggestion nm arg_ty res_ty (LamE [VarP var] exp)) =
+pprSuggestion (HomoSuggestion nm _ _ arg_ty res_ty (LamE [VarP var] exp)) =
   ppr $ deModuleName $
     VarE 'law `AppTypeE` ConT nm `AppE` (LamE [SigP (VarP var) arg_ty] $ SigE exp res_ty)
-pprSuggestion (HomoSuggestion nm _ _ exp) =
+pprSuggestion (HomoSuggestion nm _ _ _ _ exp) =
   ppr $ deModuleName $
     VarE 'law `AppTypeE` ConT nm `AppE` exp
+
+
+knownSuggestionHierarchies :: [[Name]]
+knownSuggestionHierarchies =
+  [ [ ''Group, ''Monoid, ''Semigroup ]
+  ]
 
 suggest :: Data a => Module -> a -> Q [Suggestion]
 suggest md a = do
   let surface = getSurface md a
-  fmap (join . join) $ for [''Semigroup, ''Monoid, ''Group] $ \tc_name ->
-    for surface $ \nm -> do
-      VarI _ ty _ <- reify nm
-      possibleHomos tc_name nm ty
+  fmap (join . join) $
+    for surface $ \nm ->
+      for knownSuggestionHierarchies $ \hierarchy -> do
+        zs <- fmap join $ for hierarchy $ \tc_name -> do
+          VarI _ ty _ <- reify nm
+          possibleHomos tc_name nm ty
+        pure $ nubBy homoSuggestionEq zs
 
 
 suggest' :: Data a => a -> Q [Suggestion]
@@ -55,12 +70,12 @@ possibleHomos tc_name fn ty = do
     False -> pure []
     True  -> do
       names <- for args $ newName . goodTyName
-      fmap catMaybes $ for (zip names args) $ \(name, arg) ->
+      fmap catMaybes $ for (zip3 names args [0..]) $ \(name, arg, ix) ->
         hasInstance tc_name arg >>= \case
           False -> pure Nothing
           True  -> do
             exp <- lamE [varP name] $ appsE $ varE fn : fmap varE names
-            pure $ Just $ HomoSuggestion tc_name arg res exp
+            pure $ Just $ HomoSuggestion tc_name fn ix arg res exp
 
 
 goodTyName :: Type -> String
