@@ -14,8 +14,13 @@ import           Data.Generics.Schemes
 import qualified Data.Map as M
 import           Language.Haskell.TH
 import           Prelude hiding (exp)
-import           Test.QuickCheck.Checkers.Algebra.Types
+import {-# SOURCE #-} Test.QuickCheck.Checkers.Algebra.Types
 
+
+data SubExp = SubExp
+  { seExp  :: Exp
+  , seSubId :: Int
+  } deriving (Eq, Ord, Show)
 
 deModuleName :: Data a => a -> a
 deModuleName = everywhere $ mkT $ \case
@@ -69,7 +74,7 @@ unifySub s a b = fmap (s <>) $ on unify (sub s) a b
 
 type Critical = (Exp, Exp)
 
-criticalPairs :: Law -> Law -> [Critical]
+criticalPairs :: Law a -> Law a -> [Critical]
 criticalPairs other me = do
   let (otherlhs, otherrhs)
         = renameVars (++ "1") (lawLhsExp other, lawRhsExp other)

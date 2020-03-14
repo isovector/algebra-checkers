@@ -19,8 +19,8 @@
 
 module Modeling where
 
+import Data.Foldable
 import qualified Data.Map as M
-import Data.Map (Map)
 import GHC.Generics
 import Data.Functor.Compose
 import Data.Typeable
@@ -47,8 +47,16 @@ newtype ModeledBy a = ModeledBy
   } deriving newtype (Eq, Ord, Enum, Bounded, Read, Semigroup, Monoid)
     deriving stock Generic
 
-instance Typeable a => Show (ModeledBy a) where
-  show (ModeledBy a) = show $ typeOf a
+instance Show a => Show (ModeledBy a) where
+  show (ModeledBy a) = show a
+
+instance (Typeable a, Typeable b) => Show (a -> b) where
+  show _ =
+    mconcat
+      [ show $ typeOf @a undefined
+      , " -> "
+      , show $ typeOf @b undefined
+      ]
 
 instance Arbitrary a => Arbitrary (ModeledBy a) where
   arbitrary = fmap ModeledBy arbitrary
@@ -65,10 +73,10 @@ instance CoArbitrary a => CoArbitrary (ModeledBy a) where
   coarbitrary (ModeledBy a) = coarbitrary a
 
 
-type Who        = ModeledBy Int
-type Permission = ModeledBy Int
-type Policy     = ModeledBy (Who -> S.Set Permission)
-type Hierarchy  = ModeledBy (M.Map ResourceName HierarchyDeno)
+type Who          = ModeledBy Int
+type Permission   = ModeledBy Int
+type Policy       = ModeledBy (Who -> S.Set Permission)
+type Hierarchy    = ModeledBy (M.Map ResourceName HierarchyDeno)
 type ResourcePath = ModeledBy [ResourceName]
 type ResourceName = ModeledBy String
 
@@ -88,16 +96,25 @@ instance (Monoid (f (g a))) => Monoid (Compose f g a) where
   mempty = Compose mempty
 
 get :: ResourcePath -> Hierarchy -> Maybe Policy
-get (model -> []) _ = mempty
-get (model -> [rn]) h = fmap hdenoPolicy $ M.lookup rn (model h)
-get (model -> (rn : rp)) h = maybe mempty (get (ModeledBy rp) . hdenoChildren) $ M.lookup rn (model h)
+get rp h =
+  case model rp of
+    [] -> mempty
+    [rn] -> fmap hdenoPolicy $ M.lookup rn (model h)
+    (rn : rp') -> maybe mempty (get (ModeledBy rp') . hdenoChildren) $ M.lookup rn (model h)
 
+-- TODO(sandy): there was a bug here where i forgot to keep the old hierarchy structure
+-- nice catch!
+--
+-- there is another bug where we'd not update our children properly
 set :: ResourcePath -> Policy -> Hierarchy -> Hierarchy
 set rp p h =
   case model rp of
     [] -> h
-    [rn] -> maybe h (\(HierarchyDeno _ c) -> hierarchy rn p c) $ M.lookup rn $ model h
-    (rn:rp') -> maybe h (set (ModeledBy rp') p . hdenoChildren) $ M.lookup rn $ model h
+    [rn] -> maybe h (\(HierarchyDeno _ c) -> hierarchy rn p c <> h) $ M.lookup rn $ model h
+    (rn:rp') -> maybe h (\h' ->
+      ModeledBy (M.singleton rn $ h' { hdenoChildren = set (ModeledBy rp') p $ hdenoChildren h' }) <> h)
+              $ M.lookup rn
+              $ model h
 
 test :: Who -> ResourcePath -> Hierarchy -> Permission -> Any
 test w rp h p =
@@ -126,21 +143,14 @@ instance (EqProp k, EqProp v) => EqProp (M.Map k v) where
   (=-=) = (=-=) `on` M.toList
 
 
-laws :: [Property]
-laws = $(theoremsOf' [| do
-  homo @Monoid $ \h -> test w rp h p
-  homo @Monoid $ \h -> get rp h
-  homo @Monoid $ \h -> set rp p h
-  law "set/get" $ maybe h (flip (set rp) h) (get rp h) == h
-  law "set/set" $ set rp p' (set rp p h) == set rp p' h
-  law "get/set" $ get rp (set rp p h) == (p <$ get rp h)
-  law "get/exact-hierarchy" $
-    get (exact rn) (hierarchy rn p c) == Just p
-  law "test/exact-hierarchy" $
-    test who (exact rn) (hierarchy rn p c) perm
-      == Any (S.member perm (model p who))
-  |])
+-- laws :: [Property]
+-- laws = $(theoremsOf' [| do
+--   undefined
+--   |])
 
-main :: IO ()
-main = quickCheck laws
+(?) :: (a -> b -> c) -> b -> a -> c
+(?) = flip
+
+-- main :: IO ()
+-- main = traverse_ quickCheck laws
 
