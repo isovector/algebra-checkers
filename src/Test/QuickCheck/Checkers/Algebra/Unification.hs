@@ -13,6 +13,7 @@ import           Data.Generics.Aliases
 import           Data.Generics.Schemes
 import qualified Data.Map as M
 import           Language.Haskell.TH
+import           Language.Haskell.TH.Syntax
 import           Prelude hiding (exp)
 import {-# SOURCE #-} Test.QuickCheck.Checkers.Algebra.Types
 
@@ -25,7 +26,9 @@ data SubExp = SubExp
 
 deModuleName :: Data a => a -> a
 deModuleName = everywhere $ mkT $ \case
-  n -> mkName $ nameBase n
+  NameQ _ -> NameS
+  NameG _ _ _ -> NameS
+  n       -> n
 
 
 unboundVars :: Exp -> [Name]

@@ -100,6 +100,5 @@ unrollTyArr ty =
     unloopTyArrs t =  [t]
 
 hasInstance :: Name -> Type -> Q Bool
-hasInstance tc_name ty =
-  isProperInstance tc_name [ty]
+hasInstance tc_name = isProperInstance tc_name . pure
 
