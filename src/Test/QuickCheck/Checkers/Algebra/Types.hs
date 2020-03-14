@@ -1,7 +1,9 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFunctor      #-}
 
 module Test.QuickCheck.Checkers.Algebra.Types where
 
+import Data.Data
 import Test.QuickCheck.Checkers.Algebra.Unification
 import Language.Haskell.TH
 
@@ -10,7 +12,7 @@ data Law a = Law
   , lawLhsExp :: Exp
   , lawRhsExp :: Exp
   }
-  deriving (Ord, Show)
+  deriving (Ord, Show, Data, Typeable)
 
 instance Eq a => Eq (Law a) where
   Law d a a' == Law d' b b' =

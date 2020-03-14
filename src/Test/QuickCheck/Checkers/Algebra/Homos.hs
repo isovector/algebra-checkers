@@ -2,6 +2,7 @@
 
 module Test.QuickCheck.Checkers.Algebra.Homos where
 
+import           Data.Group
 import           Data.List (foldl')
 import qualified Data.Map as M
 import           Language.Haskell.TH hiding (ppr, Arity)
@@ -60,6 +61,8 @@ knownHomos nm
         = [ ('mempty, Prefix 0)
           , ('(<>),   Binary)
           ]
+  | nm == ''Group
+        = [ ('invert, Prefix 1) ]
   | nm == ''Eq
         = [ ('(==), Binary) ]
   | nm == ''Ord

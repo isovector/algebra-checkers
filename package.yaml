@@ -28,11 +28,10 @@ dependencies:
 - QuickCheck
 - transformers
 - mtl
-- logict
-- monad-gen
 - pretty
 - ansi-terminal
-- free
+- th-instance-reification
+- groups
 
 ghc-options:
   - -Wall

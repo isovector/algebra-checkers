@@ -19,17 +19,19 @@
 
 module Modeling where
 
-import Data.Foldable
+import           Data.Foldable
+import           Data.Function
+import           Data.Functor.Compose
 import qualified Data.Map as M
-import GHC.Generics
-import Data.Functor.Compose
-import Data.Typeable
-import Data.Function
-import Test.QuickCheck
-import Test.QuickCheck.Checkers.Algebra.TH
-import Test.QuickCheck.Checkers
+import           Data.Monoid
 import qualified Data.Set as S
-import Data.Monoid
+import           Data.Typeable
+import           GHC.Generics
+import           Test.QuickCheck
+import           Test.QuickCheck.Checkers
+import           Test.QuickCheck.Checkers.Algebra.Ppr
+import           Test.QuickCheck.Checkers.Algebra.Suggestions
+import           Test.QuickCheck.Checkers.Algebra.TH
 
 data Undecided = Undecided
   deriving stock (Eq, Ord, Show, Read, Generic)
@@ -141,6 +143,8 @@ instance (Ord b, Model a b) => Model (S.Set a) (S.Set b) where
 
 instance (EqProp k, EqProp v) => EqProp (M.Map k v) where
   (=-=) = (=-=) `on` M.toList
+
+$(fmap (error . unlines . fmap (render . pprSuggestion)) $ suggest' ['hierarchy, 'exact, 'test, 'set, 'get])
 
 
 -- laws :: [Property]

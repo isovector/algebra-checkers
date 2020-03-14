@@ -5,19 +5,19 @@
 
 packages:
 - completed:
-    hackage: monad-gen-0.3.0.1@sha256:a2569465cfbd468d3350ef25de56b3362580e77537224313aab1210f40804a3b,821
-    pantry-tree:
-      size: 288
-      sha256: a825dc8dcc3ee27dbbc1b71f6853703790ed320249b8f8510bb36d726664e795
-  original:
-    hackage: monad-gen-0.3.0.1
-- completed:
     hackage: ansi-terminal-0.10.3@sha256:e2fbcef5f980dc234c7ad8e2fa433b0e8109132c9e643bc40ea5608cd5697797,3226
     pantry-tree:
       size: 1461
       sha256: 02f05d52be3ffcf36c78876629cbab80b63420672685371aea4fd10e1c4aabb6
   original:
     hackage: ansi-terminal-0.10.3
+- completed:
+    hackage: list-extras-0.4.1.4@sha256:ed748395742238cb0824658a5cb916d3796817eb75fdd6632557ddfcd5429b7e,2394
+    pantry-tree:
+      size: 527
+      sha256: 3887778ba91ac11e94300a82ce0898d9ce80dadcde7994676f3e66e7aee13bb7
+  original:
+    hackage: list-extras-0.4.1.4
 snapshots:
 - completed:
     size: 523443
