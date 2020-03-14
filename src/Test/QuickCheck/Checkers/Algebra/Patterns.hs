@@ -11,8 +11,8 @@ module Test.QuickCheck.Checkers.Algebra.Patterns where
 import qualified Data.Kind as Kind
 import           Language.Haskell.TH hiding (ppr, Arity)
 
-pattern LawStmt :: String -> Exp -> Exp -> Stmt
-pattern LawStmt lawname exp1 exp2 <- NoBindS
+pattern LawParens :: String -> Exp -> Exp -> Stmt
+pattern LawParens lawname exp1 exp2 <- NoBindS
   (      VarE ((==) 'law -> True)
   `AppE` LitE  (StringL lawname)
   `AppE` (InfixE (Just exp1)
@@ -34,8 +34,17 @@ pattern LawDollar lawname exp1 exp2 <- NoBindS
     )
   )
 
-pattern Homo :: Name -> Exp -> Stmt
-pattern Homo ty expr <- NoBindS
+matchLaw :: Stmt -> Maybe (String, Exp, Exp)
+matchLaw (LawParens name exp1 exp2) = Just (name, exp1, exp2)
+matchLaw (LawDollar name exp1 exp2) = Just (name, exp1, exp2)
+matchLaw _ = Nothing
+
+pattern LawDef :: String -> Exp -> Exp -> Stmt
+pattern LawDef name exp1 exp2 <- (matchLaw -> Just (name, exp1, exp2))
+
+
+pattern HomoParens :: Name -> Exp -> Stmt
+pattern HomoParens ty expr <- NoBindS
   (      (VarE ((==) 'homo -> True) `AppTypeE` ConT ty)
   `AppE` expr
   )
@@ -47,6 +56,16 @@ pattern HomoDollar ty expr <- NoBindS
     (VarE ((==) '($) -> True))
     (Just expr)
   )
+
+matchHomo :: Stmt -> Maybe (Name, Exp)
+matchHomo (HomoParens ty expr) = Just (ty, expr)
+matchHomo (HomoDollar ty expr) = Just (ty, expr)
+matchHomo _ = Nothing
+
+
+pattern HomoDef :: Name -> Exp -> Stmt
+pattern HomoDef ty expr <- (matchHomo -> Just (ty, expr))
+
 
 
 law :: String -> Bool -> law

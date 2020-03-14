@@ -22,6 +22,7 @@ data SubExp = SubExp
   , seSubId :: Int
   } deriving (Eq, Ord, Show)
 
+
 deModuleName :: Data a => a -> a
 deModuleName = everywhere $ mkT $ \case
   n -> mkName $ nameBase n
