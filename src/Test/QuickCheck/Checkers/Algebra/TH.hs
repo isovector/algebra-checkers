@@ -67,6 +67,6 @@ theoremsOf z = do
 collect :: Stmt -> [NamedLaw]
 collect (LawDef lawname exp1 exp2) = [Law lawname exp1 exp2]
 collect (HomoDef ty expr)          = makeHomo ty (knownHomos ty) expr
-collect _ = error
-  "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
+collect x = error $ show x
+  -- "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
 
