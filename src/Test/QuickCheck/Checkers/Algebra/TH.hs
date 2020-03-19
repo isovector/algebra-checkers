@@ -78,7 +78,7 @@ theoremsOf z = do
                $ text "Contradictions:" : text "" : fmap (showTheorem md) contradicts
       putStrLn ""
       putStrLn ""
-  listE $ fmap propTestEq theorems
+  listE $ fmap propTestEq $ theorems ++ dodgy
 
 collect :: Stmt -> [Law LawSort]
 collect (LawDef lawname exp1 exp2) = [Law (LawName lawname) exp1 exp2]
