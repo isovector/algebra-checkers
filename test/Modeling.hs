@@ -23,9 +23,7 @@ import qualified Data.Set as S
 import           GHC.Generics
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers
-import           AlgebraCheckers.Patterns (law, homo)
-import           AlgebraCheckers.TH
-import           Unsafe.Coerce
+import           AlgebraCheckers
 
 -- import           AlgebraCheckers.Ppr
 -- import           AlgebraCheckers.Suggestions
