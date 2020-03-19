@@ -11,6 +11,36 @@ module Test.QuickCheck.Checkers.Algebra.Patterns where
 import qualified Data.Kind as Kind
 import           Language.Haskell.TH hiding (ppr, Arity)
 
+pattern NotDodgyParens :: Exp -> Exp -> Stmt
+pattern NotDodgyParens exp1 exp2 <- NoBindS
+  (      VarE ((==) 'notDodgy -> True)
+  `AppE` (InfixE (Just exp1)
+                 (VarE ((==) '(==) -> True))
+                 (Just exp2)
+         )
+  )
+
+pattern NotDodgyDollar :: Exp -> Exp -> Stmt
+pattern NotDodgyDollar exp1 exp2 <- NoBindS
+  (InfixE
+    (Just ( VarE ((==) 'notDodgy -> True)))
+    (VarE ((==) '($) -> True))
+    (Just (InfixE (Just exp1)
+                  (VarE ((==) '(==) -> True))
+                  (Just exp2)
+          )
+    )
+  )
+
+matchNotDodgy :: Stmt -> Maybe (Exp, Exp)
+matchNotDodgy (NotDodgyParens exp1 exp2) = Just (exp1, exp2)
+matchNotDodgy (NotDodgyDollar exp1 exp2) = Just (exp1, exp2)
+matchNotDodgy _ = Nothing
+
+pattern NotDodgyDef :: Exp -> Exp -> Stmt
+pattern NotDodgyDef exp1 exp2 <- (matchNotDodgy -> Just (exp1, exp2))
+
+
 pattern LawParens :: String -> Exp -> Exp -> Stmt
 pattern LawParens lawname exp1 exp2 <- NoBindS
   (      VarE ((==) 'law -> True)
@@ -70,6 +100,9 @@ pattern HomoDef ty expr <- (matchHomo -> Just (ty, expr))
 
 law :: String -> Bool -> law
 law = undefined
+
+notDodgy :: Bool -> law
+notDodgy = undefined
 
 homo
     :: forall (homo :: Kind.Type -> Kind.Constraint) a b law

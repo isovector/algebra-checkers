@@ -3,12 +3,13 @@
 
 module Test.QuickCheck.Checkers.Algebra.Theorems where
 
+import Data.Either
 import Control.Monad
 import Data.Bool
 import Data.Char
 import Data.Function (on)
 import Data.Generics.Schemes (listify)
-import Data.List (nub)
+import Data.List (nub, (\\))
 import Data.Maybe (isNothing, fromMaybe, mapMaybe)
 import Data.Semigroup
 import Language.Haskell.TH hiding (ppr, Arity)
@@ -74,9 +75,14 @@ isFullyMatchable (AppE (UnboundVarE _) _) = False
 isFullyMatchable (AppE exp1 exp2)         = isFullyMatchable exp1 && isFullyMatchable exp2
 isFullyMatchable _                        = False
 
+namedLawToEither :: NamedLaw -> Either (Law ()) (Law String)
+namedLawToEither (Law (LawName n) a b) = Right (Law n a b)
+namedLawToEither (Law LawNotDodgy a b) = Left (Law () a b)
+
 theorize :: Module -> [NamedLaw] -> [Theorem]
-theorize md laws =
-  let law_defs = fmap (\t -> t { lawData = LawDefn $ lawData t }) laws
+theorize md named_laws =
+  let (not_dodgy, laws) = partitionEithers $ fmap namedLawToEither named_laws
+      law_defs = fmap (\t -> t { lawData = LawDefn $ lawData t }) laws
       sane_laws = filter (sanityCheck md) law_defs
       theorems = do
          l1@Law{lawData = LawDefn l1name} <- sane_laws
@@ -84,7 +90,7 @@ theorize md laws =
          guard $ l1 /= l2
          (lhs, rhs) <- criticalPairs l1 l2
          pure $ Law (Interaction l1name l2name) lhs rhs
-   in nub $ law_defs <> theorems
+   in (nub $ law_defs <> theorems) \\ fmap (\l -> l {lawData = LawDefn ""} ) not_dodgy
 
 matchableAppHead :: Exp -> Maybe Name
 matchableAppHead (ConE n)   = Just n

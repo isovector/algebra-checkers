@@ -20,7 +20,12 @@ instance Eq a => Eq (Law a) where
       [ equalUpToAlpha a b && equalUpToAlpha a' b'
       ]
 
-type NamedLaw = Law String
+data LawSort
+  = LawName String
+  | LawNotDodgy
+  deriving (Eq, Ord, Show)
+
+type NamedLaw = Law LawSort
 type Theorem  = Law TheoremSource
 
 data Arity = Binary | Prefix Int

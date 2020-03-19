@@ -27,7 +27,7 @@ aritySize :: Arity -> Int
 aritySize Binary     = 2
 aritySize (Prefix n) = n
 
-makeHomo :: Name -> [(Name, Arity)] -> Exp -> [NamedLaw]
+makeHomo :: Name -> [(Name, Arity)] -> Exp -> [Law LawSort]
 makeHomo ty ops (LamE [VarP name] body) =
   let app_head = maybe "<expr>" nameBase $ appHead body
       homo_name = nameBase ty
@@ -46,7 +46,7 @@ mkHomo name vars body law_name fn Binary =
   case vars of
     (v1:v2:_) ->
       let replace x = rebindVars (M.singleton name x) body
-       in Law law_name
+       in Law (LawName law_name)
               (replace $ InfixE (Just v1) fn (Just v2))
               (InfixE (Just $ replace v1)
                       fn
@@ -55,7 +55,7 @@ mkHomo name vars body law_name fn Binary =
 mkHomo name all_vars body law_name fn (Prefix n)=
   let replace x = rebindVars (M.singleton name x) body
       vars = take n all_vars
-   in Law law_name
+   in Law (LawName law_name)
           (replace $ foldl' AppE fn vars)
           (foldl' AppE fn $ fmap replace vars)
 

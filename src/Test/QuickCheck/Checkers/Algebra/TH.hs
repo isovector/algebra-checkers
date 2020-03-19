@@ -46,7 +46,7 @@ lawConf e = do
   m <- thisModule
   listE . fmap propTestEq . theorize m $ parseLaws e
 
-parseLaws :: Exp -> [NamedLaw]
+parseLaws :: Exp -> [Law LawSort]
 parseLaws (DoE z) = concatMap collect z
 parseLaws _ = error "you must call parseLaws with a do block"
 
@@ -80,8 +80,9 @@ theoremsOf z = do
       putStrLn ""
   listE $ fmap propTestEq theorems
 
-collect :: Stmt -> [NamedLaw]
-collect (LawDef lawname exp1 exp2) = [Law lawname exp1 exp2]
+collect :: Stmt -> [Law LawSort]
+collect (LawDef lawname exp1 exp2) = [Law (LawName lawname) exp1 exp2]
+collect (NotDodgyDef exp1 exp2)    = [Law LawNotDodgy exp1 exp2]
 collect (HomoDef ty expr)          = makeHomo ty (knownHomos ty) expr
 collect x = error $ show x
   -- "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
