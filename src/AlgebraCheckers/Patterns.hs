@@ -6,7 +6,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE ViewPatterns          #-}
 
-module Test.QuickCheck.Checkers.Algebra.Patterns where
+module AlgebraCheckers.Patterns where
 
 import qualified Data.Kind as Kind
 import           Language.Haskell.TH hiding (ppr, Arity)

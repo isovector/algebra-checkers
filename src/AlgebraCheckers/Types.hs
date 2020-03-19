@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor      #-}
 
-module Test.QuickCheck.Checkers.Algebra.Types where
+module AlgebraCheckers.Types where
 
 import Data.Data
-import Test.QuickCheck.Checkers.Algebra.Unification
+import AlgebraCheckers.Unification
 import Language.Haskell.TH
 
 data Law a = Law

@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE TupleSections         #-}
 
-module Test.QuickCheck.Checkers.Algebra.Theorems where
+module AlgebraCheckers.Theorems where
 
 import Data.Either
 import Control.Monad
@@ -15,10 +15,10 @@ import Data.Semigroup
 import Language.Haskell.TH hiding (ppr, Arity)
 import Language.Haskell.TH.Syntax (Module)
 import Prelude hiding (exp)
-import Test.QuickCheck.Checkers.Algebra.Homos
-import Test.QuickCheck.Checkers.Algebra.Suggestions
-import Test.QuickCheck.Checkers.Algebra.Types
-import Test.QuickCheck.Checkers.Algebra.Unification
+import AlgebraCheckers.Homos
+import AlgebraCheckers.Suggestions
+import AlgebraCheckers.Types
+import AlgebraCheckers.Unification
 
 
 sanityCheck :: Module -> Theorem -> Bool

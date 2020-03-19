@@ -1,5 +1,5 @@
-module Test.QuickCheck.Checkers.Algebra.Ppr
-  ( module Test.QuickCheck.Checkers.Algebra.Ppr
+module AlgebraCheckers.Ppr
+  ( module AlgebraCheckers.Ppr
   , Doc
   , render
   , sep
@@ -14,8 +14,8 @@ import           Language.Haskell.TH hiding (ppr, Arity)
 import           Language.Haskell.TH.PprLib (to_HPJ_Doc)
 import           Prelude hiding (exp)
 import           System.Console.ANSI
-import           Test.QuickCheck.Checkers.Algebra.Types
-import           Test.QuickCheck.Checkers.Algebra.Unification
+import           AlgebraCheckers.Types
+import           AlgebraCheckers.Unification
 import qualified Text.PrettyPrint.HughesPJ as Ppr
 import           Text.PrettyPrint.HughesPJ hiding ((<>))
 

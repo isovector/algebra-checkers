@@ -1,4 +1,4 @@
-module Test.QuickCheck.Checkers.Algebra.Types where
+module AlgebraCheckers.Types where
 
 import Language.Haskell.TH
 

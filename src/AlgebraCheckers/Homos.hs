@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
-module Test.QuickCheck.Checkers.Algebra.Homos where
+module AlgebraCheckers.Homos where
 
 import           Control.Arrow (second)
 import           Data.Group
@@ -8,8 +8,8 @@ import           Data.List (foldl')
 import qualified Data.Map as M
 import           Data.Maybe
 import           Language.Haskell.TH hiding (ppr, Arity)
-import           Test.QuickCheck.Checkers.Algebra.Types
-import           Test.QuickCheck.Checkers.Algebra.Unification
+import           AlgebraCheckers.Types
+import           AlgebraCheckers.Unification
 
 
 appHead :: Exp -> Maybe Name

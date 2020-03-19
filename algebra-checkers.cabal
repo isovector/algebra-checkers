@@ -1,0 +1,57 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 50f192bbaf91f3309d65ca689f2596273a1556d7b7e87ad4c707ca06fbc7a60e
+
+name:           algebra-checkers
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/isovector/algebra-checkers#readme>
+homepage:       https://github.com/isovector/algebra-checkers#readme
+bug-reports:    https://github.com/isovector/algebra-checkers/issues
+author:         Sandy Maguire
+maintainer:     sandy@sandymaguire.me
+copyright:      2020 Sandy Maguire
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/isovector/algebra-checkers
+
+library
+  exposed-modules:
+      AlgebraCheckers.Homos
+      AlgebraCheckers.Patterns
+      AlgebraCheckers.Ppr
+      AlgebraCheckers.Suggestions
+      AlgebraCheckers.TH
+      AlgebraCheckers.Theorems
+      AlgebraCheckers.Types
+      AlgebraCheckers.Unification
+      Language.Haskell.TH.Orphans
+  other-modules:
+      Paths_algebra_checkers
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-depends:
+      QuickCheck
+    , ansi-terminal
+    , base >=4.7 && <5
+    , checkers
+    , containers
+    , groups
+    , mtl
+    , pretty
+    , syb
+    , template-haskell
+    , th-instance-reification
+    , transformers
+  default-language: Haskell2010

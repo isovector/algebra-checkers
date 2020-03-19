@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module Test.QuickCheck.Checkers.Algebra.TH where
+module AlgebraCheckers.TH where
 
 import Control.Monad
 import Data.Bool
@@ -11,12 +11,12 @@ import Language.Haskell.TH hiding (ppr, Arity)
 import Language.Haskell.TH.Syntax (lift, Module)
 import Prelude hiding (exp)
 import Test.QuickCheck hiding (collect)
-import Test.QuickCheck.Checkers.Algebra.Homos
-import Test.QuickCheck.Checkers.Algebra.Patterns
-import Test.QuickCheck.Checkers.Algebra.Ppr
-import Test.QuickCheck.Checkers.Algebra.Theorems
-import Test.QuickCheck.Checkers.Algebra.Types
-import Test.QuickCheck.Checkers.Algebra.Unification
+import AlgebraCheckers.Homos
+import AlgebraCheckers.Patterns
+import AlgebraCheckers.Ppr
+import AlgebraCheckers.Theorems
+import AlgebraCheckers.Types
+import AlgebraCheckers.Unification
 
 
 showTheorem :: Module -> Theorem -> Doc

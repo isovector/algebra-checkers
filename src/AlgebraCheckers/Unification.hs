@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns    #-}
 
-module Test.QuickCheck.Checkers.Algebra.Unification where
+module AlgebraCheckers.Unification where
 
 import           Control.Applicative
 import           Control.Monad.State
@@ -15,7 +15,7 @@ import qualified Data.Map as M
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
 import           Prelude hiding (exp)
-import {-# SOURCE #-} Test.QuickCheck.Checkers.Algebra.Types
+import {-# SOURCE #-} AlgebraCheckers.Types
 
 
 data SubExp = SubExp

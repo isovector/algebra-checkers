@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
-module Test.QuickCheck.Checkers.Algebra.Suggestions where
+module AlgebraCheckers.Suggestions where
 
 import Data.List
 import Data.Char
@@ -10,9 +10,9 @@ import Prelude hiding (exp)
 import Data.Traversable
 import Language.Haskell.TH hiding (ppr)
 import Language.Haskell.TH.Syntax
-import Test.QuickCheck.Checkers.Algebra.Ppr
-import Test.QuickCheck.Checkers.Algebra.Unification
-import Test.QuickCheck.Checkers.Algebra.Patterns
+import AlgebraCheckers.Ppr
+import AlgebraCheckers.Unification
+import AlgebraCheckers.Patterns
 import Data.Generics.Schemes (listify)
 import Data.Data
 import Data.Maybe
