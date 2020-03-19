@@ -6,6 +6,6 @@ module AlgebraCheckers
   , notDodgy
   ) where
 
-import AlgebraCheckers.TH
 import AlgebraCheckers.Patterns
+import AlgebraCheckers.TH
 

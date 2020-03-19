@@ -3,6 +3,12 @@
 
 module AlgebraCheckers.TH where
 
+import AlgebraCheckers.Homos
+import AlgebraCheckers.Patterns
+import AlgebraCheckers.Ppr
+import AlgebraCheckers.Theorems
+import AlgebraCheckers.Types
+import AlgebraCheckers.Unification
 import Control.Monad
 import Data.Bool
 import Data.List (nub, partition)
@@ -11,12 +17,7 @@ import Language.Haskell.TH hiding (ppr, Arity)
 import Language.Haskell.TH.Syntax (lift, Module)
 import Prelude hiding (exp)
 import Test.QuickCheck hiding (collect)
-import AlgebraCheckers.Homos
-import AlgebraCheckers.Patterns
-import AlgebraCheckers.Ppr
-import AlgebraCheckers.Theorems
-import AlgebraCheckers.Types
-import AlgebraCheckers.Unification
+import Test.QuickCheck.Checkers ((=-=))
 
 
 showTheorem :: Module -> Theorem -> Doc

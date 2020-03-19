@@ -31,6 +31,7 @@ dependencies:
 - ansi-terminal >= 0.10.3
 - th-instance-reification >= 0.1.5
 - groups >= 0.4.1.0
+- checkers >= 0.5.5
 
 ghc-options:
   - -Wall

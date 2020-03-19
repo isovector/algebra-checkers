@@ -99,15 +99,18 @@ pattern HomoDef ty expr <- (matchHomo -> Just (ty, expr))
 
 
 law :: String -> Bool -> law
-law = undefined
+law =
+  error "law may be called only inside of a call to testModel or theoremsOf"
 
 notDodgy :: Bool -> law
-notDodgy = undefined
+notDodgy =
+  error "notDodgy may be called only inside of a call to testModel or theoremsOf"
 
 homo
     :: forall (homo :: Kind.Type -> Kind.Constraint) a b law
      . (homo a, homo b)
     => (a -> b)
     -> law
-homo = undefined
+homo =
+  error "homo may be called only inside of a call to testModel or theoremsOf"
 
