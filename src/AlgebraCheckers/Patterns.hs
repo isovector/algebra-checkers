@@ -130,7 +130,10 @@ law =
 --
 -- This function /must/ be called only in the context of either
 -- 'AlgebraCheckers.testModel' or 'AlgebraCheckers.theoremsOf'.
-notDodgy :: Bool -> law
+notDodgy
+    :: Bool  -- ^ Law. /This is not any ordinary 'Bool'!/ See the documentation
+             -- on 'law' for more information.
+    -> law
 notDodgy =
   error "notDodgy may be called only inside of a call to testModel or theoremsOf"
 

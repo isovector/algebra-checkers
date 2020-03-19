@@ -52,7 +52,7 @@ propTestEq t@(Law _ exp1 exp2) = do
 --   lawTests = $('theoremsOf' [e| do
 --
 --   'AlgebraCheckers.law' "commutativity" $ a '+' b '==' b '+' a
---   'AlgebraCheckers.law' "identity" (a '+' 0 '==' 0)
+--   'AlgebraCheckers.law' "identity" (a '+' 0 '==' a)
 --
 --   |])
 -- @
