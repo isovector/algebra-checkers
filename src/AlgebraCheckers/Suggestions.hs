@@ -18,6 +18,7 @@ import Data.Data
 import Data.Maybe
 import THInstanceReification
 import Data.Group
+import Data.Semigroup
 
 
 data Suggestion
