@@ -1,3 +1,6 @@
+{-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE TupleSections         #-}
+
 module Test.QuickCheck.Checkers.Algebra.Theorems where
 
 import Control.Monad
@@ -6,34 +9,41 @@ import Data.Char
 import Data.Function (on)
 import Data.Generics.Schemes (listify)
 import Data.List (nub)
-import Data.Maybe (isNothing, fromMaybe)
+import Data.Maybe (isNothing, fromMaybe, mapMaybe)
 import Data.Semigroup
 import Language.Haskell.TH hiding (ppr, Arity)
+import Language.Haskell.TH.Syntax (Module)
 import Prelude hiding (exp)
+import Test.QuickCheck.Checkers.Algebra.Homos
+import Test.QuickCheck.Checkers.Algebra.Suggestions
 import Test.QuickCheck.Checkers.Algebra.Types
 import Test.QuickCheck.Checkers.Algebra.Unification
 
 
-sanityCheck :: Theorem -> Bool
-sanityCheck = isNothing . sanityCheck'
+sanityCheck :: Module -> Theorem -> Bool
+sanityCheck md = isNothing . sanityCheck' md
 
-sanityCheck' :: Theorem -> Maybe ContradictionReason
-sanityCheck' (Law _ lhs rhs) =
+sanityCheck' :: Module -> Theorem -> Maybe TheoremProblem
+sanityCheck' md (Law _ lhs rhs) =
   either Just (const Nothing) $ foldr1 (>>)
-    [ lift_error UnknownConstructors $ fmap (\(UnboundVarE n) -> n) $ listify is_unbound_ctor (lhs, rhs)
+    [ lift_error (Contradiction . UnknownConstructors)
+        $ fmap (\(UnboundVarE n) -> n)
+        $ listify is_unbound_ctor (lhs, rhs)
     , ensure_bound_matches lhs rhs
     , ensure_bound_matches rhs lhs
-    , bool (Left UnequalValues) (Right ()) $
+    , bool (Left $ Contradiction UnequalValues) (Right ()) $
         on (&&) isFullyMatchable lhs rhs `implies` (==) lhs rhs
-    , bool (Left UnequalValues) (Right ()) $ fromMaybe True $
+    , bool (Left $ Contradiction UnequalValues) (Right ()) $ fromMaybe True $
         liftM2 (==) (matchableAppHead lhs) (matchableAppHead rhs)
+    , bool (Right ()) (Left $ Dodgy SelfRecursive) $ nonlinearUse md lhs rhs
+    , bool (Right ()) (Left $ Dodgy SelfRecursive) $ nonlinearUse md rhs lhs
     ]
   where
     is_unbound_ctor (UnboundVarE n) = isUpper . head $ nameBase n
     is_unbound_ctor _ = False
 
     ensure_bound_matches a b
-      = lift_error UnboundMatchableVars
+      = lift_error (Contradiction . UnboundMatchableVars)
       $ filter (not . exists_in a)
       $ matchableMetaVars b
     lift_error _ [] = Right ()
@@ -64,10 +74,10 @@ isFullyMatchable (AppE (UnboundVarE _) _) = False
 isFullyMatchable (AppE exp1 exp2)         = isFullyMatchable exp1 && isFullyMatchable exp2
 isFullyMatchable _                        = False
 
-theorize :: [NamedLaw] -> [Theorem]
-theorize laws =
+theorize :: Module -> [NamedLaw] -> [Theorem]
+theorize md laws =
   let law_defs = fmap (\t -> t { lawData = LawDefn $ lawData t }) laws
-      sane_laws = filter sanityCheck law_defs
+      sane_laws = filter (sanityCheck md) law_defs
       theorems = do
          l1@Law{lawData = LawDefn l1name} <- sane_laws
          l2@Law{lawData = LawDefn l2name} <- sane_laws
@@ -80,4 +90,17 @@ matchableAppHead :: Exp -> Maybe Name
 matchableAppHead (ConE n)   = Just n
 matchableAppHead (AppE f _) = matchableAppHead f
 matchableAppHead _          = Nothing
+
+nonlinearUse :: Module -> Exp -> Exp -> Bool
+nonlinearUse md exp1 exp2 =
+  let exp2s = mapMaybe (\exp -> splitApps exp) $ fmap seExp $ subexps exp2
+   in any (\(apphead, exps) -> nonlinearFunc md apphead && any (equalUpToAlpha exp1) exps) exp2s
+
+nonlinearFunc :: Module -> Name -> Bool
+nonlinearFunc _ name
+  | name == 'const  = False
+  -- | name == 'bool   = False
+  | name == 'maybe  = False
+  | name == 'either = False
+nonlinearFunc md name = not $ sameModule md name
 

@@ -63,15 +63,27 @@ showSaneTheorem (Law n a b) = hang (text "•") 2 $
   , nest 2 $ parens $ showTheoremSource n
   ]
 
-showContradictoryTheorem :: Theorem -> ContradictionReason -> Doc
-showContradictoryTheorem (Law n a b) contradiction = hang (text "•") 2 $
+showContradictoryTheorem :: Theorem -> TheoremProblem -> Doc
+showContradictoryTheorem (Law n a b) (Contradiction reason) = hang (text "•") 2 $
   sep
   [ vcat
       [ backcolorize Red $ hang (ppr $ deModuleName a) 6
-          . hang (text "=") 4
+          . hang (text "=") 2
           . ppr
           $ deModuleName b
-      , nest 2 $ pprContradiction contradiction
+      , nest 2 $ pprContradiction reason
+      ]
+  , nest 2 $ parens $ showTheoremSource n
+  ]
+showContradictoryTheorem (Law n a b) (Dodgy reason) = hang (text "•") 2 $
+  sep
+  [ vcat
+      [ hang (backcolorize Black $ ppr $ deModuleName a) 6
+          . hang (text "=") 2
+          . backcolorize Black
+          . ppr
+          $ deModuleName b
+      , nest 2 $ pprDodgy reason
       ]
   , nest 2 $ parens $ showTheoremSource n
   ]
@@ -103,6 +115,10 @@ pprContradiction (UnknownConstructors vars) =
     ]
 pprContradiction UnequalValues =
   text "unequal values"
+
+pprDodgy :: DodgyReason -> Doc
+pprDodgy SelfRecursive =
+  text "not necessarily productive"
 
 
 exprColor :: Color

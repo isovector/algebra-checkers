@@ -26,10 +26,27 @@ type Theorem  = Law TheoremSource
 data Arity = Binary | Prefix Int
   deriving (Eq, Ord, Show)
 
+data TheoremProblem
+  = Dodgy DodgyReason
+  | Contradiction ContradictionReason
+  deriving (Eq, Ord, Show)
+
+isContradiction :: TheoremProblem -> Bool
+isContradiction Contradiction{} = True
+isContradiction _               = False
+
+isDodgy :: TheoremProblem -> Bool
+isDodgy Dodgy{} = True
+isDodgy _       = False
+
 data ContradictionReason
   = UnboundMatchableVars [Name]
   | UnequalValues
   | UnknownConstructors [Name]
+  deriving (Eq, Ord, Show)
+
+data DodgyReason
+  = SelfRecursive
   deriving (Eq, Ord, Show)
 
 data TheoremSource

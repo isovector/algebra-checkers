@@ -2,19 +2,26 @@
 
 module Test.QuickCheck.Checkers.Algebra.Homos where
 
+import           Control.Arrow (second)
 import           Data.Group
 import           Data.List (foldl')
 import qualified Data.Map as M
+import           Data.Maybe
 import           Language.Haskell.TH hiding (ppr, Arity)
 import           Test.QuickCheck.Checkers.Algebra.Types
 import           Test.QuickCheck.Checkers.Algebra.Unification
 
 
 appHead :: Exp -> Maybe Name
-appHead (VarE n)   = Just n
-appHead (ConE n)   = Just n
-appHead (AppE f _) = appHead f
-appHead _          = Nothing
+appHead = fmap fst . splitApps
+
+splitApps :: Exp -> Maybe (Name, [Exp])
+splitApps (VarE n)         = Just (n, [])
+splitApps (ConE n)         = Just (n, [])
+splitApps (AppE f e)       = fmap (second (++ [e])) $ splitApps f
+splitApps (InfixE e1 f e2) =
+  fmap (second (\e -> e ++ maybeToList e1 ++ maybeToList e2)) $ splitApps f
+splitApps _                = Nothing
 
 aritySize :: Arity -> Int
 aritySize Binary     = 2
