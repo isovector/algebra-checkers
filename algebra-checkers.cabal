@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4b2d04b50c54e63a5ac40ebdd21268cc313f4ba96c6fd12097eaa155df478a23
+-- hash: 6099c9fd3b44194055df7be16fd61a17287e960a1906c110359412bd0d81764a
 
 name:           algebra-checkers
 version:        0.1.0.0
@@ -44,16 +44,15 @@ library
       src
   ghc-options: -Wall
   build-depends:
-      QuickCheck
-    , ansi-terminal
+      QuickCheck >=2.10.1 && <3
+    , ansi-terminal >=0.10.3
     , base >=4.7 && <5
-    , checkers
-    , containers
-    , groups
-    , mtl
-    , pretty
-    , syb
-    , template-haskell
-    , th-instance-reification
-    , transformers
+    , containers >=0.5.10.2
+    , groups >=0.4.1.0
+    , mtl >=2.2.2 && <3
+    , pretty >=1.1.3.3 && <2
+    , syb >=0.7
+    , template-haskell >=2.12.0.0 && <3
+    , th-instance-reification >=0.1.5
+    , transformers >=0.5.2.0
   default-language: Haskell2010

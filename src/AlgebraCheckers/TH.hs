@@ -38,11 +38,11 @@ propTestEq t@(Law _ exp1 exp2) = do
       |])
     |]
 
-lawConf' :: ExpQ -> ExpQ
-lawConf' = (lawConf =<<)
+testModel :: ExpQ -> ExpQ
+testModel = (testModelImpl =<<)
 
-lawConf :: Exp -> ExpQ
-lawConf e = do
+testModelImpl :: Exp -> ExpQ
+testModelImpl e = do
   m <- thisModule
   listE . fmap propTestEq . theorize m $ parseLaws e
 

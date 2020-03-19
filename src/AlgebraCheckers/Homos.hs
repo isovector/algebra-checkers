@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 module AlgebraCheckers.Homos where
@@ -9,8 +10,11 @@ import           Data.Group
 import           Data.List (foldl')
 import qualified Data.Map as M
 import           Data.Maybe
-import           Data.Semigroup
 import           Language.Haskell.TH hiding (ppr, Arity)
+
+#if __GLASGOW_HASKELL__ <= 802
+import           Data.Semigroup
+#endif
 
 
 appHead :: Exp -> Maybe Name

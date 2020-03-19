@@ -158,9 +158,9 @@ instance (EqProp k, EqProp v) => EqProp (M.Map k v) where
 
 
 laws :: [Property]
-laws = $(lawConf' [| do
+laws = $(testModel [| do
   law "set/set"    $ set i x' (set i x s) == set i x' s
-  law "set/get"    $ maybe h (flip (set i) h) (get i s) == h
+  law "set/get"    $ maybe h (set i ? h) (get i s) == h
   law "get/set"    $ get i (set i x h) == (x <$ get i h)
   homo @Monoid $ \h -> set i x h
   homo @Monoid $ \h -> get i h

@@ -1,5 +1,5 @@
 module AlgebraCheckers
-  ( lawConf'
+  ( testModel
   , theoremsOf
   , law
   , homo
