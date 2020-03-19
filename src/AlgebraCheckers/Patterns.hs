@@ -155,7 +155,7 @@ notDodgy =
 --
 -- ==== __Examples__
 --
--- @'homo' \@'Monoid' $ \s -> set x s@
+-- @'homo' \@'Monoid' $ \\s -> set x s@
 homo
     :: (homo a, homo b)
     => (a -> b)  -- ^ The function expected to be a homomorphism.
