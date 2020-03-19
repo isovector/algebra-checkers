@@ -5,8 +5,7 @@ packages:
 
 extra-deps:
 - ansi-terminal-0.10.3
-- ../checkers
-- ../th-instance-reification
+- th-instance-reification-0.1.5
 - list-extras-0.4.1.4
 
 allow-newer: true

@@ -23,12 +23,12 @@ import qualified Data.Set as S
 import           GHC.Generics
 import           Test.QuickCheck
 import           Test.QuickCheck.Checkers
-import           Test.QuickCheck.Checkers.Algebra.Patterns (law, homo)
-import           Test.QuickCheck.Checkers.Algebra.TH
+import           AlgebraCheckers.Patterns (law, homo)
+import           AlgebraCheckers.TH
 import           Unsafe.Coerce
 
--- import           Test.QuickCheck.Checkers.Algebra.Ppr
--- import           Test.QuickCheck.Checkers.Algebra.Suggestions
+-- import           AlgebraCheckers.Ppr
+-- import           AlgebraCheckers.Suggestions
 
 
 data Undecided = Undecided
@@ -36,14 +36,6 @@ data Undecided = Undecided
   deriving anyclass EqProp
 
 instance Function a => Function (ModeledBy a)
-
-instance (Function a, Semigroup b) => Semigroup (Fun a b) where
-  -- fn1 <> fn2 = _
-  Fun (fnab1, b1, s1) fab1 <> Fun (fnab2, b2, s2) fab2 =
-    Fun (function (const $ b1 <> b2), b1 <> b2, s1) (fab1 <> fab2)
-
-instance (Function a, Monoid b) => Monoid (Fun a b) where
-  mempty = Fun (function mempty, mempty, unsafeCoerce True) mempty
 
 instance (Arbitrary a, Show a, EqProp b) => EqProp (Fun a b) where
   (=-=) = (=-=) `on` applyFun
@@ -90,10 +82,13 @@ instance CoArbitrary a => CoArbitrary (ModeledBy a) where
 
 type Who          = ModeledBy Int
 type Permission   = ModeledBy Int
-type Policy       = ModeledBy (Fun Who (S.Set Permission))
+type Policy       = ModeledBy (Who -> S.Set Permission)
 type Hierarchy    = ModeledBy (M.Map ResourceName HierarchyDeno)
 type ResourcePath = ModeledBy [ResourceName]
 type ResourceName = ModeledBy String
+
+instance {-# OVERLAPPING #-} Show (ModeledBy (a -> b)) where
+  show _ = "<fun>"
 
 data HierarchyDeno = HierarchyDeno
   { hdenoPolicy   :: Policy
@@ -137,7 +132,7 @@ set rp p h =
 test :: Who -> ResourcePath -> Hierarchy -> Permission -> Any
 test w rp h p =
   case model rp of
-    [rn] -> maybe mempty (\r -> Any $ S.member p $ applyFun (model (hdenoPolicy r)) w) $ M.lookup rn (model h)
+    [rn] -> maybe mempty (\r -> Any $ S.member p $ model (hdenoPolicy r) w) $ M.lookup rn (model h)
     (rn:rp') -> maybe mempty (\h' -> test w (ModeledBy rp') (hdenoChildren h') p) $ M.lookup rn (model h)
     [] -> mempty
 

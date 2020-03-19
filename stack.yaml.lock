@@ -12,6 +12,13 @@ packages:
   original:
     hackage: ansi-terminal-0.10.3
 - completed:
+    hackage: th-instance-reification-0.1.5@sha256:6250d680c261a6def3190a203402001bc6558714932296ee56e19c1536c8affe,2671
+    pantry-tree:
+      size: 517
+      sha256: 73d153029d3d7d5d77262b065a0abd3185e27148f40e997f253b44155097663c
+  original:
+    hackage: th-instance-reification-0.1.5
+- completed:
     hackage: list-extras-0.4.1.4@sha256:ed748395742238cb0824658a5cb916d3796817eb75fdd6632557ddfcd5429b7e,2394
     pantry-tree:
       size: 527

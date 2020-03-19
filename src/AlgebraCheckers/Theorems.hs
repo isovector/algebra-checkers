@@ -103,10 +103,5 @@ nonlinearUse md exp1 exp2 =
    in any (\(apphead, exps) -> nonlinearFunc md apphead && any (equalUpToAlpha exp1) exps) exp2s
 
 nonlinearFunc :: Module -> Name -> Bool
-nonlinearFunc _ name
-  | name == 'const  = False
-  -- | name == 'bool   = False
-  | name == 'maybe  = False
-  | name == 'either = False
 nonlinearFunc md name = not $ sameModule md name
 
