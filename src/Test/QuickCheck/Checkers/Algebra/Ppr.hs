@@ -56,7 +56,7 @@ showSaneTheorem :: Theorem -> Doc
 showSaneTheorem (Law n a b) = hang (text "•") 2 $
   sep
   [ hang (colorize exprColor $ ppr $ deModuleName a) 6
-      . hang (text "=") 4
+      . hang (text "=") 2
       . colorize exprColor
       . ppr
       $ deModuleName b

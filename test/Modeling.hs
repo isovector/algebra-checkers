@@ -1,20 +1,13 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE DeriveAnyClass             #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE FunctionalDependencies     #-}
-{-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE QuantifiedConstraints      #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE ViewPatterns               #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -27,16 +20,16 @@ import           Data.Group
 import qualified Data.Map as M
 import           Data.Monoid
 import qualified Data.Set as S
-import           Data.Typeable
 import           GHC.Generics
 import           Test.QuickCheck
-import           Test.QuickCheck.Function
 import           Test.QuickCheck.Checkers
-import           Test.QuickCheck.Checkers.Algebra.Ppr
-import           Test.QuickCheck.Checkers.Algebra.Suggestions
-import           Test.QuickCheck.Checkers.Algebra.TH
 import           Test.QuickCheck.Checkers.Algebra.Patterns (law, homo)
-import Unsafe.Coerce
+import           Test.QuickCheck.Checkers.Algebra.TH
+import           Unsafe.Coerce
+
+-- import           Test.QuickCheck.Checkers.Algebra.Ppr
+-- import           Test.QuickCheck.Checkers.Algebra.Suggestions
+
 
 data Undecided = Undecided
   deriving stock (Eq, Ord, Show, Read, Generic)
@@ -61,6 +54,7 @@ instance Arbitrary Undecided where
   arbitrary = pure Undecided
 instance CoArbitrary Undecided where
   coarbitrary _ = id
+
 
 newtype ModeledBy a = ModeledBy
   { modeledBy :: a
@@ -174,7 +168,7 @@ laws :: [Property]
 laws = $(lawConf' [| do
   law "set/set"    $ set i x' (set i x s) == set i x' s
   law "set/get"    $ maybe h (flip (set i) h) (get i s) == h
-  law "get/set"    $ get i (set i x s) == Just x
+  law "get/set"    $ get i (set i x h) == (x <$ get i h)
   homo @Monoid $ \h -> set i x h
   homo @Monoid $ \h -> get i h
   |])

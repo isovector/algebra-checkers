@@ -15,10 +15,9 @@ data Law a = Law
   deriving (Ord, Show, Data, Typeable)
 
 instance Eq a => Eq (Law a) where
-  Law d a a' == Law d' b b' =
+  Law _ a a' == Law _ b b' =
     and
       [ equalUpToAlpha a b && equalUpToAlpha a' b'
-      , d == d'
       ]
 
 type NamedLaw = Law String

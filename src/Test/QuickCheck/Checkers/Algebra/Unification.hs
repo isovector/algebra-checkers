@@ -72,7 +72,7 @@ sub :: Data a => Subst -> a -> a
 sub = bindVars
 
 unifySub :: Subst -> Exp -> Exp -> Maybe Subst
-unifySub s a b = fmap (s <>) $ on unify (sub s) a b
+unifySub s a b = fmap (\s' -> M.map (sub s') s') $ fmap (<> s) $ on unify (sub s) a b
 
 
 
