@@ -1,5 +1,7 @@
 # algebra-checkers
 
+[![Build Status](https://travis-ci.org/isovector/algebra-checkers.svg?branch=master)](https://travis-ci.org/isovector/algebra-checkers)
+
 ## Dedication
 
 > "Any fool can make a rule, and any fool will mind it."
