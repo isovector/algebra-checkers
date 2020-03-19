@@ -3,22 +3,22 @@
 
 module AlgebraCheckers.Suggestions where
 
-import Data.List
-import Data.Char
+import AlgebraCheckers.Patterns
+import AlgebraCheckers.Ppr
+import AlgebraCheckers.Unification
 import Control.Monad
-import Prelude hiding (exp)
+import Data.Char
+import Data.Data
+import Data.Generics.Schemes (listify)
+import Data.Group
+import Data.List
+import Data.Maybe
+import Data.Semigroup
 import Data.Traversable
 import Language.Haskell.TH hiding (ppr)
 import Language.Haskell.TH.Syntax
-import AlgebraCheckers.Ppr
-import AlgebraCheckers.Unification
-import AlgebraCheckers.Patterns
-import Data.Generics.Schemes (listify)
-import Data.Data
-import Data.Maybe
+import Prelude hiding (exp)
 import THInstanceReification
-import Data.Group
-import Data.Semigroup
 
 
 data Suggestion

@@ -50,35 +50,30 @@ parseLaws :: Exp -> [Law LawSort]
 parseLaws (DoE z) = concatMap collect z
 parseLaws _ = error "you must call parseLaws with a do block"
 
-theoremsOf' :: ExpQ -> ExpQ
-theoremsOf' = (theoremsOf =<<)
+theoremsOf :: ExpQ -> ExpQ
+theoremsOf = (theoremsOfImpl =<<)
 
-theoremsOf :: Exp -> ExpQ
-theoremsOf z = do
+theoremsOfImpl :: Exp -> ExpQ
+theoremsOfImpl z = do
   md <- thisModule
   let (theorems, problems) = partition (sanityCheck md) $ theorize md $ parseLaws z
       contradicts = filter (maybe False isContradiction . sanityCheck' md) problems
       dodgy       = filter (maybe False isDodgy . sanityCheck' md) problems
   runIO $ do
     putStrLn ""
+    printStuff md "Theorems"       theorems
+    printStuff md "Dodgy Theorems" dodgy
+    printStuff md "Contradictions" contradicts
+  listE $ fmap propTestEq $ theorems ++ dodgy ++ contradicts
+
+printStuff :: Module -> String -> [Theorem] -> IO ()
+printStuff md sort laws =
+  when (not $ null laws) $ do
     putStrLn . render
              $ sep
-             $ text "Theorems:" : text "" : fmap (showTheorem md) theorems
+             $ text (sort ++ ":") : text "" : fmap (showTheorem md) laws
     putStrLn ""
     putStrLn ""
-    when (not $ null dodgy) $ do
-      putStrLn . render
-               $ sep
-               $ text "Dodgy Theorems:" : text "" : fmap (showTheorem md) dodgy
-      putStrLn ""
-      putStrLn ""
-    when (not $ null contradicts) $ do
-      putStrLn . render
-               $ sep
-               $ text "Contradictions:" : text "" : fmap (showTheorem md) contradicts
-      putStrLn ""
-      putStrLn ""
-  listE $ fmap propTestEq $ theorems ++ dodgy
 
 collect :: Stmt -> [Law LawSort]
 collect (LawDef lawname exp1 exp2) = [Law (LawName lawname) exp1 exp2]

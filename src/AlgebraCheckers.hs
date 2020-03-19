@@ -1,6 +1,6 @@
 module AlgebraCheckers
   ( lawConf'
-  , theoremsOf'
+  , theoremsOf
   , law
   , homo
   , notDodgy

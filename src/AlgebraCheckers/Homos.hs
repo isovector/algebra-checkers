@@ -2,14 +2,15 @@
 
 module AlgebraCheckers.Homos where
 
+import           AlgebraCheckers.Types
+import           AlgebraCheckers.Unification
 import           Control.Arrow (second)
 import           Data.Group
 import           Data.List (foldl')
 import qualified Data.Map as M
 import           Data.Maybe
+import           Data.Semigroup
 import           Language.Haskell.TH hiding (ppr, Arity)
-import           AlgebraCheckers.Types
-import           AlgebraCheckers.Unification
 
 
 appHead :: Exp -> Maybe Name
