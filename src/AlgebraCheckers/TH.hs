@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
 
+{-# OPTIONS_HADDOCK not-home #-}
+
 module AlgebraCheckers.TH where
 
 import AlgebraCheckers.Homos
@@ -39,6 +41,21 @@ propTestEq t@(Law _ exp1 exp2) = do
       |])
     |]
 
+
+------------------------------------------------------------------------------
+-- | Generate QuickCheck property tests for the given model.
+--
+-- ==== __Examples__
+--
+-- @
+--   lawTests :: ['Test.QuickCheck.Property']
+--   lawTests = $('theoremsOf' [e| do
+--
+--   'AlgebraCheckers.law' "commutativity" $ a '+' b '==' b '+' a
+--   'AlgebraCheckers.law' "identity" (a '+' 0 '==' 0)
+--
+--   |])
+-- @
 testModel :: ExpQ -> ExpQ
 testModel = (testModelImpl =<<)
 
@@ -51,6 +68,10 @@ parseLaws :: Exp -> [Law LawSort]
 parseLaws (DoE z) = concatMap collect z
 parseLaws _ = error "you must call parseLaws with a do block"
 
+------------------------------------------------------------------------------
+-- | Like 'testModel', but also interactively dumps all of the derived theorems
+-- of your model. This is very helpful for finding dodgy derivations and
+-- outright contradictions.
 theoremsOf :: ExpQ -> ExpQ
 theoremsOf = (theoremsOfImpl =<<)
 
