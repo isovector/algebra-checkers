@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE UndecidableInstances       #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -ddump-splices #-}
 
 module Modeling where
 
@@ -159,14 +160,18 @@ instance (EqProp k, EqProp v) => EqProp (M.Map k v) where
 (?) :: (a -> b -> c) -> b -> a -> c
 (?) = flip
 
+emptylist :: [Int]
+emptylist = [5]
+
 return []
 laws :: [Property]
 laws = $(testModel [| do
-  law "set/set"    $ set i x' (set i x s) == set i x' s
-  law "set/get"    $ maybe h (set i ? h) (get i s) == h
-  law "get/set"    $ get i (set i x h) == (x <$ get i h)
-  homo @Monoid $ \h -> set i x h
-  homo @Monoid $ \h -> get i h
+  law "map/map" $ map f ([] :: [Int]) == [1,2,(3 :: Int)]
+  -- law "set/set"    $ set i x' (set i x s) == set i x' s
+  -- law "set/get"    $ maybe h (set i ? h) (get i s) == h
+  -- law "get/set"    $ get i (set i x h) == (x <$ get i h)
+  -- homo @Monoid $ \h -> set i x h
+  -- homo @Monoid $ \h -> get i h
   |])
 
 main :: IO ()

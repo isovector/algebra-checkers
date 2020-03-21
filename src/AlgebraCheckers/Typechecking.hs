@@ -56,7 +56,7 @@ typecheck scope = (substZonked =<<) . \case
   LitE (IntegerL _) -> freshTy
   LitE (RationalL _) -> freshTy
   LitE t -> error $ mappend "LitE" $ show t
-  AppTypeE e t -> do
+  SigE e t -> do
     et <- typecheck scope e
     unifyTy et t
     pure t
@@ -71,6 +71,21 @@ typecheck scope = (substZonked =<<) . \case
     unifyTy t t2
     pure t2
   ParensE e -> typecheck scope e
+  ListE exps -> do
+    tys <-
+      for exps $ \e -> do
+        t <- freshTy
+        et <- typecheck scope e
+        unifyTy t et
+        pure t
+    expst <- freshTy
+    listt <- freshTy
+    let tys' = listt : tys
+    sequence_ $ zipWith unifyTy tys' $ tail tys'
+    unifyTy expst $ ListT `AppT` listt
+    pure expst
+
+
   x -> error $ mappend "typecheck" $ show x
 
 
@@ -124,23 +139,23 @@ isFunctionWithArity :: Int -> Type -> Q Bool
 isFunctionWithArity n t = runTc $ do
   t'  <- runQ $ resolveTypeSynonyms t
   tys <- for [0..n] $ const freshTy
-  let arr = foldl1 (:->) tys
+  let arr = foldr1 (:->) tys
   unifyTyResult t' arr >>= \case
     Equal -> pure True
-    _     -> do
-      case headAppT t' of
-        Nothing -> pure $ trace (show t) False
-        Just (h, apps) -> runQ (reify h) >>= \case
-          TyConI (NewtypeD _ _ vars _ con _) ->
-            case getNewtypeConType con of
-              Just nty ->
-                runQ
-                  $ isFunctionWithArity n
-                  $ applySubstitution
-                      (M.fromList $ zip (fmap bndrName vars) apps)
-                  $ nty
-              Nothing -> trace "not a newtype" $ pure False
-          _ -> pure $ trace "bad reify" False
+    _     -> pure False --  do
+      -- case headAppT t' of
+      --   Nothing -> pure $ trace (show t) False
+      --   Just (h, apps) -> runQ (reify h) >>= \case
+      --     TyConI (NewtypeD _ _ vars _ con _) ->
+      --       case getNewtypeConType con of
+      --         Just nty ->
+      --           runQ
+      --             $ isFunctionWithArity n
+      --             $ applySubstitution
+      --                 (M.fromList $ zip (fmap bndrName vars) apps)
+      --             $ nty
+      --         Nothing -> trace "not a newtype" $ pure False
+      --     _ -> pure $ trace "bad reify" False
 
 getNewtypeConType :: Con -> Maybe Type
 getNewtypeConType (NormalC _ [(_, t)]) = Just t

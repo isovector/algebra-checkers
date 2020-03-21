@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE LambdaCase       #-}
 {-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -41,9 +42,9 @@ propTestEq t@(Law _ exp1 exp2) = do
   pats <-
     for inferred $ \(var, ty) -> do
       name <- newName $ nameBase var
-      z <- isFunctionWithArity 1 ty
-      traceM $ show z
-      varP name
+      isFunctionWithArity 1 ty >>= \case
+        True -> conP 'Fn [varP name]
+        False -> varP name
 
   [e|
     counterexample $(lift $ render $ showTheorem md t) $
