@@ -8,7 +8,6 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE UndecidableInstances       #-}
-
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Modeling where

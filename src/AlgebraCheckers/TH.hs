@@ -6,6 +6,7 @@
 
 module AlgebraCheckers.TH where
 
+import qualified Data.Map as M
 import Debug.Trace
 import AlgebraCheckers.Homos
 import AlgebraCheckers.Patterns
@@ -36,14 +37,17 @@ propTestEq :: Theorem -> ExpQ
 propTestEq t@(Law _ exp1 exp2) = do
   md <- thisModule
   eqexp <- [e| $(pure exp1) =-= $(pure exp2) |]
-  !tys <- inferUnboundVars eqexp
-  traceM $ show tys
+  inferred <- fmap M.toList $ inferUnboundVars eqexp
+  pats <-
+    for inferred $ \(var, ty) -> do
+      name <- newName $ nameBase var
+      z <- isFunctionWithArity 1 ty
+      traceM $ show z
+      varP name
 
-  let vars = nub $ unboundVars exp1 ++ unboundVars exp2
-  names <- for vars $ newName . nameBase
   [e|
     counterexample $(lift $ render $ showTheorem md t) $
-      property $(lamE (fmap varP names) [e|
+      property $(lamE (fmap pure pats) [e|
        $(pure eqexp)
       |])
     |]

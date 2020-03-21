@@ -4,30 +4,31 @@
 {-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TupleSections    #-}
 
-module AlgebraCheckers.Typechecking where
+module AlgebraCheckers.Typechecking
+  ( inferUnboundVars
+  , isFunctionWithArity
+  ) where
 
+import Control.Arrow (second)
+import Debug.Trace
 import           AlgebraCheckers.Unification (unboundVars)
 import           Control.Monad
 import qualified Data.Map as M
 import           Data.Traversable
-import           Debug.Trace
-import           Language.Haskell.TH.Datatype (applySubstitution)
-import           Language.Haskell.TH.Lib
-import           Language.Haskell.TH.Ppr
+import           Language.Haskell.TH.Datatype (applySubstitution, resolveTypeSynonyms)
 import           Language.Haskell.TH.Syntax
 import           Language.Haskell.TH.Typecheck
+
 
 type Scope = M.Map Name Type
 
 
 instantiate' :: MonadTc m => Type -> m Type
 instantiate' (ForallT tys _ t) = do
+  t' <- instantiate' t
   let names = fmap bndrName tys
   tys' <- for names $ \name -> (name, ) <$> freshTy
-  let sub = applySubstitution (M.fromList tys')
-
-  t' <- instantiate' t
-  pure $ sub t'
+  pure $ applySubstitution (M.fromList tys') t'
 instantiate' (a :-> b) = (a :->) <$> instantiate b
 instantiate' t = pure t
 
@@ -72,8 +73,10 @@ typecheck scope = (substZonked =<<) . \case
   ParensE e -> typecheck scope e
   x -> error $ mappend "typecheck" $ show x
 
+
 freshTy :: MonadTc m => m Type
 freshTy = VarT <$> freshUnifTV
+
 
 mkAppTy :: MonadTc m => Type -> Type -> m Type
 mkAppTy (ForallT tys c ty) a = do
@@ -82,6 +85,7 @@ mkAppTy (th :-> tb) a = do
   unifyTy th a
   pure tb
 mkAppTy x _ = error $ mappend "mkAppTy " $ show x
+
 
 bndrName :: TyVarBndr -> Name
 bndrName (PlainTV n) = n
@@ -99,20 +103,6 @@ inferUnboundVars e = runTc $ do
   traverse substZonked vars
 
 
-testIt2 :: Q Exp -> Q Exp
-testIt2 qe = do
-  e <- qe
-  t <- inferUnboundVars e
-  litE $ stringL $ show t
-
-
-testIt :: Q Exp -> Q Exp
-testIt qe = do
-  e <- qe
-  traceM $ show e
-  t <- runTc $ substZonked =<< typecheck mempty e
-  litE $ stringL $ show $ ppr t
-
 killForall :: Type -> Type
 killForall (ForallT [] _ t) = t
 killForall t = t
@@ -122,4 +112,38 @@ pattern (:->) :: Type -> Type -> Type
 pattern t :-> ts <- AppT (AppT ArrowT t) ts
   where
     t :-> ts = AppT (AppT ArrowT t) ts
+
+
+headAppT :: Type -> Maybe (Name, [Type])
+headAppT (ConT n) = Just (n, [])
+headAppT (AppT a t) = fmap (second (++ [t])) (headAppT a)
+headAppT _ = Nothing
+
+
+isFunctionWithArity :: Int -> Type -> Q Bool
+isFunctionWithArity n t = runTc $ do
+  t'  <- runQ $ resolveTypeSynonyms t
+  tys <- for [0..n] $ const freshTy
+  let arr = foldl1 (:->) tys
+  unifyTyResult t' arr >>= \case
+    Equal -> pure True
+    _     -> do
+      case headAppT t' of
+        Nothing -> pure $ trace (show t) False
+        Just (h, apps) -> runQ (reify h) >>= \case
+          TyConI (NewtypeD _ _ vars _ con _) ->
+            case getNewtypeConType con of
+              Just nty ->
+                runQ
+                  $ isFunctionWithArity n
+                  $ applySubstitution
+                      (M.fromList $ zip (fmap bndrName vars) apps)
+                  $ nty
+              Nothing -> trace "not a newtype" $ pure False
+          _ -> pure $ trace "bad reify" False
+
+getNewtypeConType :: Con -> Maybe Type
+getNewtypeConType (NormalC _ [(_, t)]) = Just t
+getNewtypeConType (RecC _ [(_, _, t)]) = Just t
+getNewtypeConType _ = Nothing
 
