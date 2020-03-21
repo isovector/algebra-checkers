@@ -34,13 +34,12 @@ showTheorem md thm =
       showContradictoryTheorem thm contradiction
     Nothing -> showSaneTheorem thm
 
--- TODO(sandy): typechecking happens too late; should be associated to a law
 mkPattern :: Name -> Type -> PatQ
 mkPattern nm ty = do
   let mono = monomorphize ty
   case mono == ty of
     True  -> varP nm
-    False -> varP nm -- sigP (varP nm) $ pure mono
+    False -> sigP (varP nm) $ pure mono
 
 
 propTestEq :: Theorem -> ExpQ
