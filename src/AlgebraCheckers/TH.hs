@@ -34,6 +34,15 @@ showTheorem md thm =
       showContradictoryTheorem thm contradiction
     Nothing -> showSaneTheorem thm
 
+-- TODO(sandy): typechecking happens too late; should be associated to a law
+mkPattern :: Name -> Type -> PatQ
+mkPattern nm ty = do
+  let mono = monomorphize ty
+  case mono == ty of
+    True  -> varP nm
+    False -> varP nm -- sigP (varP nm) $ pure mono
+
+
 propTestEq :: Theorem -> ExpQ
 propTestEq t@(Law _ exp1 exp2) = do
   md <- thisModule
@@ -41,10 +50,10 @@ propTestEq t@(Law _ exp1 exp2) = do
   inferred <- fmap M.toList $ inferUnboundVars eqexp
   pats <-
     for inferred $ \(var, ty) -> do
-      name <- newName $ nameBase var
+      let pat = mkPattern var ty
       isFunctionWithArity 1 ty >>= \case
-        True -> conP 'Fn [varP name]
-        False -> varP name
+        True -> conP 'Fn [pat]
+        False -> pat
 
   [e|
     counterexample $(lift $ render $ showTheorem md t) $

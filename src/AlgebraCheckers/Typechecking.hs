@@ -7,6 +7,7 @@
 module AlgebraCheckers.Typechecking
   ( inferUnboundVars
   , isFunctionWithArity
+  , monomorphize
   ) where
 
 import Control.Arrow (second)
@@ -18,9 +19,17 @@ import           Data.Traversable
 import           Language.Haskell.TH.Datatype (applySubstitution, resolveTypeSynonyms)
 import           Language.Haskell.TH.Syntax
 import           Language.Haskell.TH.Typecheck
+import           Data.Generics.Aliases
+import           Data.Generics.Schemes
 
 
 type Scope = M.Map Name Type
+
+
+monomorphize :: Type -> Type
+monomorphize = everywhere $ mkT $ \case
+  VarT _ -> ConT ''Int
+  t -> t
 
 
 instantiate' :: MonadTc m => Type -> m Type
