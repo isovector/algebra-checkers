@@ -2,40 +2,53 @@
 {-# LANGUAGE LambdaCase       #-}
 {-# LANGUAGE PatternSynonyms  #-}
 {-# LANGUAGE TemplateHaskell  #-}
+{-# LANGUAGE TupleSections    #-}
 
 module AlgebraCheckers.Typechecking where
 
-import Debug.Trace
-import Control.Monad
-import Data.Traversable
-import AlgebraCheckers.Unification (unboundVars)
+import           AlgebraCheckers.Unification (unboundVars)
+import           Control.Monad
 import qualified Data.Map as M
-import Language.Haskell.TH.Typecheck
-import Language.Haskell.TH.Syntax
-import Language.Haskell.TH.Lib
-import Language.Haskell.TH.Ppr
-import Language.Haskell.TH.Datatype (applySubstitution)
+import           Data.Traversable
+import           Debug.Trace
+import           Language.Haskell.TH.Datatype (applySubstitution)
+import           Language.Haskell.TH.Lib
+import           Language.Haskell.TH.Ppr
+import           Language.Haskell.TH.Syntax
+import           Language.Haskell.TH.Typecheck
 
 type Scope = M.Map Name Type
 
 
+instantiate' :: MonadTc m => Type -> m Type
+instantiate' (ForallT tys _ t) = do
+  let names = fmap bndrName tys
+  tys' <- for names $ \name -> (name, ) <$> freshTy
+  let sub = applySubstitution (M.fromList tys')
+
+  t' <- instantiate' t
+  pure $ sub t'
+instantiate' (a :-> b) = (a :->) <$> instantiate b
+instantiate' t = pure t
+
+
 typecheck :: MonadTc m => Scope -> Exp -> m Type
-typecheck scope = \case
+typecheck scope = (substZonked =<<) . \case
   UnboundVarE n -> pure $ scope M.! n
   ConE n -> do
     qReify n >>= \case
-      DataConI _ t _ -> instantiate t
+      DataConI _ t _ -> instantiate' t
       x -> error $ mappend "ConE " $ show x
   VarE n -> do
     qReify n >>= \case
-      VarI _ t _ -> instantiate t
+      VarI _ t _ -> instantiate' t
+      ClassOpI _ t _ -> instantiate' t
       x -> error $ mappend "VarE " $ show x
   AppE f a -> do
     t <- freshTy
     ft <- typecheck scope f
     at <- typecheck scope a
-    ft' <- substZonked ft
-    unifyTy t =<< mkAppTy ft' at
+    unifyTy t =<< mkAppTy ft at
     pure t
   LitE (CharL _) -> pure $ ConT ''Char
   LitE (StringL _) -> pure $ ConT ''String
@@ -62,18 +75,9 @@ typecheck scope = \case
 freshTy :: MonadTc m => m Type
 freshTy = VarT <$> freshUnifTV
 
-
 mkAppTy :: MonadTc m => Type -> Type -> m Type
-mkAppTy (ForallT tys c (VarT th :-> tb)) a = do
-  let sub = applySubstitution (M.singleton th a)
-  pure
-    $ ForallT (filter ((/= th) . bndrName) tys)
-              (fmap sub c)
-    $ sub tb
-mkAppTy (ForallT tys c ty) a =
-  ForallT tys c <$> mkAppTy ty a
-mkAppTy (VarT th :-> tb) a = pure $
-  applySubstitution (M.singleton th a) tb
+mkAppTy (ForallT tys c ty) a = do
+  killForall . ForallT tys c <$> mkAppTy ty a
 mkAppTy (th :-> tb) a = do
   unifyTy th a
   pure tb
@@ -84,8 +88,8 @@ bndrName (PlainTV n) = n
 bndrName (KindedTV n _) = n
 
 
-inferUnboundVars :: MonadTc m => Exp -> m Scope
-inferUnboundVars e = do
+inferUnboundVars :: Exp -> Q Scope
+inferUnboundVars e = runTc $ do
   let unbound = unboundVars e
   vars <-
     fmap M.fromList $ for unbound $ \var -> do
@@ -98,7 +102,7 @@ inferUnboundVars e = do
 testIt2 :: Q Exp -> Q Exp
 testIt2 qe = do
   e <- qe
-  t <- runTc $ inferUnboundVars e
+  t <- inferUnboundVars e
   litE $ stringL $ show t
 
 
@@ -108,6 +112,10 @@ testIt qe = do
   traceM $ show e
   t <- runTc $ substZonked =<< typecheck mempty e
   litE $ stringL $ show $ ppr t
+
+killForall :: Type -> Type
+killForall (ForallT [] _ t) = t
+killForall t = t
 
 
 pattern (:->) :: Type -> Type -> Type

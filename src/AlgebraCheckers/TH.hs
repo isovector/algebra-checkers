@@ -1,14 +1,17 @@
-{-# LANGUAGE TemplateHaskell     #-}
-{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE TemplateHaskell  #-}
+{-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_HADDOCK not-home #-}
 
 module AlgebraCheckers.TH where
 
+import Debug.Trace
 import AlgebraCheckers.Homos
 import AlgebraCheckers.Patterns
 import AlgebraCheckers.Ppr
 import AlgebraCheckers.Theorems
+import AlgebraCheckers.Typechecking
 import AlgebraCheckers.Types
 import AlgebraCheckers.Unification
 import Control.Monad
@@ -32,12 +35,16 @@ showTheorem md thm =
 propTestEq :: Theorem -> ExpQ
 propTestEq t@(Law _ exp1 exp2) = do
   md <- thisModule
+  eqexp <- [e| $(pure exp1) =-= $(pure exp2) |]
+  !tys <- inferUnboundVars eqexp
+  traceM $ show tys
+
   let vars = nub $ unboundVars exp1 ++ unboundVars exp2
   names <- for vars $ newName . nameBase
   [e|
     counterexample $(lift $ render $ showTheorem md t) $
       property $(lamE (fmap varP names) [e|
-       $(pure exp1) =-= $(pure exp2)
+       $(pure eqexp)
       |])
     |]
 

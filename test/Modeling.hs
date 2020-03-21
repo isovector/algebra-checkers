@@ -157,6 +157,10 @@ instance (EqProp k, EqProp v) => EqProp (M.Map k v) where
 --   suggest' ['hierarchy, 'exact, 'test, 'set, 'get])
 
 
+(?) :: (a -> b -> c) -> b -> a -> c
+(?) = flip
+
+return []
 laws :: [Property]
 laws = $(testModel [| do
   law "set/set"    $ set i x' (set i x s) == set i x' s
@@ -165,9 +169,6 @@ laws = $(testModel [| do
   homo @Monoid $ \h -> set i x h
   homo @Monoid $ \h -> get i h
   |])
-
-(?) :: (a -> b -> c) -> b -> a -> c
-(?) = flip
 
 main :: IO ()
 main = traverse_ quickCheck laws
