@@ -9,9 +9,10 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE UndecidableInstances       #-}
-{-# OPTIONS_GHC -fno-warn-orphans       #-}
 
-{-# OPTIONS_GHC -ddump-splices          #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
+-- {-# OPTIONS_GHC -ddump-splices          #-}
 
 module Modeling where
 
@@ -168,13 +169,12 @@ emptylist = [5]
 return []
 laws :: [Property]
 laws = $(testModel [| do
-  law "map/map"    $ map f [] == [1]
-  -- law "set/set"    $ set i x' (set i x s) == set i x' s
-  -- law "set/get"    $ maybe h (set i ? h) (get i h) == h
-  -- law "get/set"    $ get i (set i x h) == (x <$ get i h)
-  -- law "mempty" $ set i x mempty == mempty
-  -- homo @Monoid $ \h -> set i x h
-  -- homo @Monoid $ \h -> get i h
+  law "map/map" $ map f x == x
+  law "set/set"    $ set i x' (set i x s) == set i x' s
+  law "set/get"    $ maybe h (set i ? h) (get i h) == h
+  law "get/set"    $ get i (set i x h) == (x <$ get i h)
+  homo @Monoid $ \h -> set i x h
+  homo @Monoid $ \h -> get i h
   |])
 
 main :: IO ()

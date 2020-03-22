@@ -4,6 +4,8 @@
 {-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TupleSections    #-}
 
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module AlgebraCheckers.Typechecking
   ( inferUnboundVars
   , isFunctionWithArity
@@ -19,17 +21,22 @@ import           Data.Generics.Aliases
 import           Data.Generics.Schemes
 import qualified Data.Map as M
 import           Data.Traversable
+import           Data.Word
 import           Language.Haskell.TH.Datatype (applySubstitution, resolveTypeSynonyms)
 import           Language.Haskell.TH.Syntax
 import           Language.Haskell.TH.Typecheck
+import           Test.QuickCheck.Checkers
 
 
 type Scope = M.Map Name Type
 
+instance EqProp Word8 where
+  (=-=) = eq
+
 
 monomorphize :: Type -> Type
 monomorphize = everywhere $ mkT $ \case
-  VarT _ -> ConT ''Int
+  VarT _ -> ConT ''Word8
   t -> t
 
 
