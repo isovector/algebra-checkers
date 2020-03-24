@@ -12,90 +12,62 @@ module AlgebraCheckers.Patterns where
 
 import Language.Haskell.TH hiding (ppr, Arity)
 
-pattern NotDodgyParens :: Exp -> Exp -> Stmt
-pattern NotDodgyParens exp1 exp2 <- NoBindS
-  (      VarE ((==) 'notDodgy -> True)
-  `AppE` (InfixE (Just exp1)
-                 (VarE ((==) '(==) -> True))
-                 (Just exp2)
-         )
-  )
+pattern LawEq :: Exp -> Exp -> Exp
+pattern LawEq exp1 exp2
+  <- InfixE
+       (Just exp1)
+       (VarE ((==) '(==) -> True))
+       (Just exp2)
+  where
+    LawEq exp1 exp2
+      = InfixE
+          (Just exp1)
+          (VarE '(==))
+          (Just exp2)
 
-pattern NotDodgyDollar :: Exp -> Exp -> Stmt
-pattern NotDodgyDollar exp1 exp2 <- NoBindS
-  (InfixE
-    (Just ( VarE ((==) 'notDodgy -> True)))
-    (VarE ((==) '($) -> True))
-    (Just (InfixE (Just exp1)
-                  (VarE ((==) '(==) -> True))
-                  (Just exp2)
-          )
-    )
-  )
 
-matchNotDodgy :: Stmt -> Maybe (Exp, Exp)
-matchNotDodgy (NotDodgyParens exp1 exp2) = Just (exp1, exp2)
-matchNotDodgy (NotDodgyDollar exp1 exp2) = Just (exp1, exp2)
-matchNotDodgy _ = Nothing
+arg :: Exp -> Maybe (Exp, Exp)
+arg (InfixE (Just f) (VarE ((==) '($) -> True)) (Just e)) = Just (f, e)
+arg (AppE f e) = Just (f, e)
+arg _ = Nothing
+
+pattern App :: Exp -> Exp -> Exp
+pattern App f e <- (arg -> Just (f, e))
+  where
+    App f e = AppE f e
+
+getBinderName :: Pat -> Maybe Name
+getBinderName (VarP n) = Just n
+getBinderName (SigP p _) = getBinderName p
+getBinderName _ = Nothing
 
 pattern NotDodgyDef :: Exp -> Exp -> Stmt
-pattern NotDodgyDef exp1 exp2 <- (matchNotDodgy -> Just (exp1, exp2))
+pattern NotDodgyDef exp1 exp2 <- NoBindS (NotDodgyN `App` LawEq exp1 exp2)
+
+pattern NotDodgyN :: Exp
+pattern NotDodgyN <- VarE ((==) 'notDodgy -> True)
+
+pattern LawN :: Exp
+pattern LawN <- VarE ((==) 'law -> True)
+
+pattern HomoN :: Exp
+pattern HomoN <- VarE ((==) 'homo -> True)
+
+pattern TyNameApp :: Exp -> Name -> Exp
+pattern TyNameApp e t <- e `AppTypeE` ConT t
 
 
-pattern LawParens :: String -> Exp -> Exp -> Stmt
-pattern LawParens lawname exp1 exp2 <- NoBindS
-  (      VarE ((==) 'law -> True)
-  `AppE` LitE  (StringL lawname)
-  `AppE` (InfixE (Just exp1)
-                 (VarE ((==) '(==) -> True))
-                 (Just exp2)
-         )
-  )
-
-pattern LawDollar :: String -> Exp -> Exp -> Stmt
-pattern LawDollar lawname exp1 exp2 <- NoBindS
-  (InfixE
-    (Just (  VarE ((==) 'law -> True)
-      `AppE` LitE  (StringL lawname)))
-    (VarE ((==) '($) -> True))
-    (Just (InfixE (Just exp1)
-                  (VarE ((==) '(==) -> True))
-                  (Just exp2)
-          )
-    )
-  )
-
-matchLaw :: Stmt -> Maybe (String, Exp, Exp)
-matchLaw (LawParens name exp1 exp2) = Just (name, exp1, exp2)
-matchLaw (LawDollar name exp1 exp2) = Just (name, exp1, exp2)
-matchLaw _ = Nothing
+pattern StringLit :: String -> Exp
+pattern StringLit str = LitE (StringL str)
 
 pattern LawDef :: String -> Exp -> Exp -> Stmt
-pattern LawDef name exp1 exp2 <- (matchLaw -> Just (name, exp1, exp2))
+pattern LawDef name exp1 exp2
+  <- NoBindS ((LawN `AppE` StringLit name) `App` LawEq exp1 exp2)
 
 
-pattern HomoParens :: Name -> Exp -> Stmt
-pattern HomoParens ty expr <- NoBindS
-  (      (VarE ((==) 'homo -> True) `AppTypeE` ConT ty)
-  `AppE` expr
-  )
-
-pattern HomoDollar :: Name -> Exp -> Stmt
-pattern HomoDollar ty expr <- NoBindS
-  (InfixE
-    (Just ((VarE ((==) 'homo -> True) `AppTypeE` ConT ty)))
-    (VarE ((==) '($) -> True))
-    (Just expr)
-  )
-
-matchHomo :: Stmt -> Maybe (Name, Exp)
-matchHomo (HomoParens ty expr) = Just (ty, expr)
-matchHomo (HomoDollar ty expr) = Just (ty, expr)
-matchHomo _ = Nothing
-
-
-pattern HomoDef :: Name -> Exp -> Stmt
-pattern HomoDef ty expr <- (matchHomo -> Just (ty, expr))
+pattern HomoDef :: Name -> Name -> Exp -> Stmt
+pattern HomoDef ty var expr
+  <- NoBindS (TyNameApp HomoN ty `App` LamE [getBinderName -> Just var] expr)
 
 
 ------------------------------------------------------------------------------

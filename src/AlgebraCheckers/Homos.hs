@@ -32,8 +32,8 @@ aritySize :: Arity -> Int
 aritySize Binary     = 2
 aritySize (Prefix n) = n
 
-makeHomo :: Name -> [(Name, Arity)] -> Exp -> [Law LawSort]
-makeHomo ty ops (LamE [VarP name] body) =
+makeHomo :: Name -> [(Name, Arity)] -> Name -> Exp -> [Law LawSort]
+makeHomo ty ops name body =
   let app_head = maybe "<expr>" nameBase $ appHead body
       homo_name = nameBase ty
       hs = fmap (UnboundVarE . mkName . (nameBase name ++) . show)
@@ -43,7 +43,6 @@ makeHomo ty ops (LamE [VarP name] body) =
           [ app_head, ":", homo_name, ":", nameBase fn ]
    in flip fmap ops $ \(fn_name, arity) ->
         mkHomo name hs body (mk_lawname fn_name) (VarE fn_name) arity
-makeHomo _ _ _ = error "monoidal homomorphism needs a lambda"
 
 
 mkHomo :: Name -> [Exp] -> Exp -> String -> Exp -> Arity -> NamedLaw

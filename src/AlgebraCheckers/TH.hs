@@ -8,17 +8,15 @@
 module AlgebraCheckers.TH where
 
 import qualified Data.Map as M
-import Debug.Trace
 import AlgebraCheckers.Homos
 import AlgebraCheckers.Patterns
 import AlgebraCheckers.Ppr
 import AlgebraCheckers.Theorems
 import AlgebraCheckers.Typechecking
 import AlgebraCheckers.Types
-import AlgebraCheckers.Unification
 import Control.Monad
 import Data.Bool
-import Data.List (nub, partition)
+import Data.List (partition)
 import Data.Traversable
 import Language.Haskell.TH hiding (ppr, Arity)
 import Language.Haskell.TH.Syntax (lift, Module)
@@ -120,7 +118,7 @@ printStuff md sort laws =
 collect :: Stmt -> [Law LawSort]
 collect (LawDef lawname exp1 exp2) = [Law (LawName lawname) exp1 exp2]
 collect (NotDodgyDef exp1 exp2)    = [Law LawNotDodgy exp1 exp2]
-collect (HomoDef ty expr)          = makeHomo ty (knownHomos ty) expr
+collect (HomoDef ty bndr expr)     = makeHomo ty (knownHomos ty) bndr expr
 collect x = error $ show x
   -- "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
 

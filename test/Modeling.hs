@@ -168,13 +168,13 @@ emptylist = [5]
 
 return []
 laws :: [Property]
-laws = $(testModel [| do
+laws = $(theoremsOf [| do
   law "map/map" $ map f x == x
-  law "set/set"    $ set i x' (set i x s) == set i x' s
-  law "set/get"    $ maybe h (set i ? h) (get i h) == h
-  law "get/set"    $ get i (set i x h) == (x <$ get i h)
-  homo @Monoid $ \h -> set i x h
-  homo @Monoid $ \h -> get i h
+  law "set/set" $ set i x' (set i x s) == set i x' s
+  law "set/get" $ maybe h (set i ? h) (get i h) == h
+  law "get/set" $ get i (set i x h) == (x <$ get i h)
+  homo @Monoid  $ \h -> set i x h
+  homo @Monoid  $ \h -> get i h
   |])
 
 main :: IO ()
