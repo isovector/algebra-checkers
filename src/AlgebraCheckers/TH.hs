@@ -11,6 +11,7 @@ import qualified Data.Map as M
 import AlgebraCheckers.Homos
 import AlgebraCheckers.Patterns
 import AlgebraCheckers.Ppr
+import AlgebraCheckers.Suggestions
 import AlgebraCheckers.Theorems
 import AlgebraCheckers.Typechecking
 import AlgebraCheckers.Types
@@ -19,7 +20,7 @@ import Data.Bool
 import Data.List (partition)
 import Data.Traversable
 import Language.Haskell.TH hiding (ppr, Arity)
-import Language.Haskell.TH.Syntax (lift, Module)
+import Language.Haskell.TH.Syntax (lift, Module, putQ, getQ)
 import Prelude hiding (exp)
 import Test.QuickCheck hiding (collect)
 import Test.QuickCheck.Checkers ((=-=))
@@ -80,7 +81,9 @@ testModel = (testModelImpl =<<)
 testModelImpl :: Exp -> ExpQ
 testModelImpl e = do
   m <- thisModule
-  listE . fmap propTestEq . theorize m $ parseLaws e
+  let theorems = theorize m $ parseLaws e
+  putQ theorems
+  listE $ fmap propTestEq theorems
 
 parseLaws :: Exp -> [Law LawSort]
 parseLaws (DoE z) = concatMap collect z
@@ -96,7 +99,9 @@ theoremsOf = (theoremsOfImpl =<<)
 theoremsOfImpl :: Exp -> ExpQ
 theoremsOfImpl z = do
   md <- thisModule
-  let (theorems, problems) = partition (sanityCheck md) $ theorize md $ parseLaws z
+  let ths = theorize md $ parseLaws z
+  putQ ths
+  let (theorems, problems) = partition (sanityCheck md) ths
       contradicts = filter (maybe False isContradiction . sanityCheck' md) problems
       dodgy       = filter (maybe False isDodgy . sanityCheck' md) problems
   runIO $ do
@@ -121,4 +126,14 @@ collect (NotDodgyDef exp1 exp2)    = [Law LawNotDodgy exp1 exp2]
 collect (HomoDef ty bndr expr)     = makeHomo ty (knownHomos ty) bndr expr
 collect x = error $ show x
   -- "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
+
+suggestions :: DecsQ
+suggestions = do
+  Just theorems <- getQ @[Theorem]
+  md <- thisModule
+  sgs <- suggest md theorems
+  runIO $ do
+    putStrLn $ unlines $ fmap (render . pprSuggestion) sgs
+
+  pure []
 

@@ -11,6 +11,7 @@ module AlgebraCheckers.Typechecking
   , isFunctionWithArity
   , typecheck
   , monomorphize
+  , pattern (:->)
   ) where
 
 import           AlgebraCheckers.Unification (unboundVars)

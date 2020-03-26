@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass             #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE DerivingVia                #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -16,6 +17,48 @@ import GHC.Generics
 import Test.QuickCheck
 import Test.QuickCheck.Checkers
 
+newtype WithSemigroup a = WithSemigroup a
+  deriving stock (Eq, Show, Generic)
+  deriving newtype (Arbitrary, CoArbitrary, EqProp)
+
+instance Semigroup (WithSemigroup a) where
+  (<>) = undefined
+
+instance Model a b => Model (WithSemigroup a) b where
+  model (WithSemigroup a) = model a
+
+newtype WithMonoid a = WithMonoid a
+  deriving stock (Eq, Show, Generic)
+  deriving newtype (Arbitrary, CoArbitrary, EqProp)
+  deriving Semigroup via (WithSemigroup a)
+
+instance Monoid (WithMonoid a) where
+  mempty = undefined
+
+instance Model a b => Model (WithMonoid a) b where
+  model (WithMonoid a) = model a
+
+newtype WithGroup a = WithGroup a
+  deriving stock (Eq, Show, Generic)
+  deriving newtype (Arbitrary, CoArbitrary, EqProp)
+  deriving Semigroup via (WithSemigroup a)
+  deriving Monoid via (WithMonoid a)
+
+instance Group (WithGroup a) where
+  invert = undefined
+
+instance Model a b => Model (WithGroup a) b where
+  model (WithGroup a) = model a
+
+newtype WithOrd a = WithOrd a
+  deriving stock (Eq, Show, Generic)
+  deriving newtype (Arbitrary, CoArbitrary, EqProp)
+
+instance Eq a => Ord (WithOrd a) where
+  compare = undefined
+
+instance Model a b => Model (WithOrd a) b where
+  model (WithOrd a) = model a
 
 data Undecided = Undecided
   deriving stock (Eq, Ord, Show, Read, Generic)

@@ -6,6 +6,7 @@ module AlgebraCheckers.Suggestions where
 import AlgebraCheckers.Patterns
 import AlgebraCheckers.Ppr
 import AlgebraCheckers.Unification
+import AlgebraCheckers.Typechecking
 import Control.Monad
 import Data.Char
 import Data.Data
@@ -34,10 +35,10 @@ homoSuggestionEq (HomoSuggestion _ fn1 ix1 _ _ _)
 pprSuggestion :: Suggestion -> Doc
 pprSuggestion (HomoSuggestion nm _ _ arg_ty res_ty (LamE [VarP var] exp)) =
   ppr $ deModuleName $
-    VarE 'law `AppTypeE` ConT nm `AppE` (LamE [SigP (VarP var) arg_ty] $ SigE exp res_ty)
+    VarE 'homo `AppTypeE` ConT nm `AppE` (LamE [SigP (VarP var) arg_ty] $ SigE exp res_ty)
 pprSuggestion (HomoSuggestion nm _ _ _ _ exp) =
   ppr $ deModuleName $
-    VarE 'law `AppTypeE` ConT nm `AppE` exp
+    VarE 'homo `AppTypeE` ConT nm `AppE` exp
 
 
 knownSuggestionHierarchies :: [[Name]]
@@ -72,11 +73,14 @@ possibleHomos tc_name fn ty = do
     True  -> do
       names <- for args $ newName . goodTyName
       fmap catMaybes $ for (zip3 names args [0..]) $ \(name, arg, ix) ->
-        hasInstance tc_name arg >>= \case
-          False -> pure Nothing
-          True  -> do
-            exp <- lamE [varP name] $ appsE $ varE fn : fmap varE names
-            pure $ Just $ HomoSuggestion tc_name fn ix arg res exp
+        case arg of
+          VarT _ -> pure Nothing
+          _ ->
+            hasInstance tc_name arg >>= \case
+              False -> pure Nothing
+              True  -> do
+                exp <- lamE [varP name] $ appsE $ varE fn : fmap varE names
+                pure $ Just $ HomoSuggestion tc_name fn ix arg res exp
 
 
 goodTyName :: Type -> String
@@ -97,7 +101,8 @@ unrollTyArr ty =
    in (init tys, last tys)
   where
     unloopTyArrs :: Type -> [Type]
-    unloopTyArrs (ArrowT `AppT` a `AppT` b) =  a : unloopTyArrs b
+    unloopTyArrs (ForallT _ _ t) = unloopTyArrs t
+    unloopTyArrs (a :-> b) =  a : unloopTyArrs b
     unloopTyArrs t =  [t]
 
 hasInstance :: Name -> Type -> Q Bool

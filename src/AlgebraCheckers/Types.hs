@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor      #-}
 
 module AlgebraCheckers.Types where
@@ -57,5 +58,5 @@ data DodgyReason
 data TheoremSource
   = LawDefn String
   | Interaction String String
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Typeable, Data)
 
