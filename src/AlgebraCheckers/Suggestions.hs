@@ -3,6 +3,7 @@
 
 module AlgebraCheckers.Suggestions where
 
+import Debug.Trace
 import AlgebraCheckers.Patterns
 import AlgebraCheckers.Ppr
 import AlgebraCheckers.Unification
@@ -47,8 +48,10 @@ knownSuggestionHierarchies =
   ]
 
 suggest :: Data a => Module -> a -> Q [Suggestion]
-suggest md a = do
-  let surface = getSurface md a
+suggest md a = suggestFor $ getSurface md a
+
+suggestFor :: [Name] -> Q [Suggestion]
+suggestFor surface = do
   fmap (join . join) $
     for surface $ \nm ->
       for knownSuggestionHierarchies $ \hierarchy -> do
@@ -75,7 +78,7 @@ possibleHomos tc_name fn ty = do
       fmap catMaybes $ for (zip3 names args [0..]) $ \(name, arg, ix) ->
         case arg of
           VarT _ -> pure Nothing
-          _ ->
+          _ -> do
             hasInstance tc_name arg >>= \case
               False -> pure Nothing
               True  -> do

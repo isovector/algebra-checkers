@@ -2,10 +2,11 @@ resolver: lts-14.0
 
 packages:
 - .
+# - ../th-instance-reification
 
 extra-deps:
 - ansi-terminal-0.10.3
-- th-instance-reification-0.1.5
+- th-instance-reification-0.1.5.1
 - list-extras-0.4.1.4
 - checkers-0.5.5
 - th-tc-0.2.1.0

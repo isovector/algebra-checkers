@@ -137,3 +137,12 @@ suggestions = do
 
   pure []
 
+suggestionsFor :: [Name] -> DecsQ
+suggestionsFor surface = do
+  sgs <- suggestFor surface
+  runIO $ do
+    putStrLn $ unlines $ fmap (render . pprSuggestion) sgs
+
+  pure []
+
+
