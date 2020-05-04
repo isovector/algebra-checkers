@@ -7,6 +7,8 @@
 
 module App where
 
+import Data.Maybe
+import Debug.Trace
 import Control.Monad
 import Data.Bool
 import Language.Haskell.Lexer
@@ -15,6 +17,7 @@ import Text.Parsec.Pos
 import Text.Parsec.Combinator
 import Data.Void
 import Data.Foldable
+
 
 type Parser = Parsec [PosToken] ()
 
@@ -61,12 +64,17 @@ unstringLit = init . drop 1
 stringLit :: Parser String
 stringLit = fmap unstringLit $ matchTokenWithStr StringLit
 
+getLocation :: Parser SourcePos
+getLocation = do
+  (_, (start, _)) <- fmap (maybe (Whitespace, (Pos 0 0 0, "")) id . listToMaybe) getInput
+  pure $ posToSourcePos start
+
 
 spanning :: Parser a -> Parser (SourceSpan, a)
 spanning p = do
-  start <- getPosition
+  start <- getLocation
   a <- p
-  end <- getPosition
+  end <- getLocation
   pure (SourceSpan start end, a)
 
 parseTypeSig :: Parser Decl
@@ -74,7 +82,7 @@ parseTypeSig = do
   opening
   name <- varid
   typeSym
-  span <- fmap fst $ spanning $ manyTill anyToken $ lookAhead opening
+  (span, _) <- spanning $ manyTill anyToken $ lookAhead opening
   pure $ TypeSig name span
 
 
@@ -83,26 +91,27 @@ parseLaw = do
   opening
   name <- flip label "rule name" $ stringLit
 
-  void $ manyTill (fmap fst anyToken) $ lookAhead eqSym
+  (lhs, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead eqSym
   eqSym
-  void $ manyTill (fmap fst anyToken) $ lookAhead opening
-  pure $ Law name
+  (rhs, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead opening
+  pure $ Law name lhs rhs
 
 
 parseModel :: Parser Decl
 parseModel = do
   opening
   modelOf
-  void $ manyTill (fmap fst anyToken) $ lookAhead eqSym
-  eqSym
-  void $ manyTill (fmap fst anyToken) $ lookAhead opening
-  pure $ Model
+  (span, _) <- spanning $ do
+    void $ manyTill (fmap fst anyToken) $ lookAhead eqSym
+    eqSym
+    void $ manyTill (fmap fst anyToken) $ lookAhead opening
+  pure $ Model span
 
 
 data Decl
   = TypeSig String SourceSpan
-  | Law String -- SourcePos SourcePos
-  | Model -- SourcePos
+  | Law String SourceSpan SourceSpan
+  | Model SourceSpan
   deriving (Eq, Ord, Show)
 
 parseDecl :: Parser Decl

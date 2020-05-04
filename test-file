@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -F -pgmF algebra-checkers #-}
 
-test :: Type
+test :: Type -> Type
 
 "rule" ok = something
 
@@ -18,3 +18,4 @@ test :: Type
 "" setEntity ix2 q2 (setEntity ix1 q1 s)
      | ix1 /= ix2 = setEntity ix1 q1 (setEntity ix2 q2 s)
 "" setEntity ix (both q1 q2) s = setEntity ix q2 (setEntity ix q1 s)
+
