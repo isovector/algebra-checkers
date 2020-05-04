@@ -34,6 +34,8 @@ dependencies:
 - checkers >= 0.5.5
 - th-tc
 - th-abstraction
+- haskell-lexer
+- parsec
 
 ghc-options:
   - -Wall

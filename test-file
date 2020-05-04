@@ -1,0 +1,20 @@
+{-# OPTIONS_GHC -F -pgmF algebra-checkers #-}
+
+test :: Type
+
+"rule" ok = something
+
+μ meaning = another
+
+
+"query/together" query (particular ix `together` q) (setEntity ix unset s) = []
+"query/update" query q (update q (const unset) s) = []
+
+"" queryEntity ix (component c) (setEntity ix (setComponent c v) s) = Just v
+"" queryEntity ix q (setEntity ix unset) = Nothing
+"" maybe s (\v -> setEntity ix (setComponent c v) s) (queryEntity ix (component c) s) = s
+"" setEntity ix (setComponent c v') (setEntity ix (setComponent c v) s)
+     = setEntity ix (setComponent c v') s
+"" setEntity ix2 q2 (setEntity ix1 q1 s)
+     | ix1 /= ix2 = setEntity ix1 q1 (setEntity ix2 q2 s)
+"" setEntity ix (both q1 q2) s = setEntity ix q2 (setEntity ix q1 s)
