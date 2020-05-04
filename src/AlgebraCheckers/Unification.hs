@@ -92,7 +92,7 @@ criticalPairs other me = do
   let res = bindVars subs (merhs, replaceSubexp pat (const otherrhs) melhs)
   guard $ uncurry (/=) res
   let (a,b) = res
-  pure (min a b, max a b)
+  pure (b, a)
 
 
 

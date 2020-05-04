@@ -78,5 +78,11 @@ knownHomos nm
         = [ ('(==), Binary) ]
   | nm == ''Ord
         = [ ('compare, Prefix 2) ]
+  -- | nm == ''Applicative
+  --       = [ ('pure, Prefix 1)
+  --       -- the pure homo generates the wrong expr: queryEntity ix (pure q1) s = pure (queryEntity ix q1 s)
+  --       -- but should be:                          queryEntity ix (pure q1) s = pure q1
+  --         , ('(<*>), Binary)
+  --         ]
   | otherwise = error $ "unsupported homo type " ++ show nm
 

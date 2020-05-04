@@ -87,7 +87,7 @@ theorize md named_laws =
       theorems = do
          l1@Law{lawData = LawDefn l1name} <- sane_laws
          l2@Law{lawData = LawDefn l2name} <- sane_laws
-         guard $ l1 /= l2
+         -- guard $ l1 /= l2
          (lhs, rhs) <- criticalPairs l1 l2
          pure $ Law (Interaction l1name l2name) lhs rhs
    in (nub $ law_defs <> theorems) \\ fmap (\l -> l {lawData = LawDefn ""} ) not_dodgy
