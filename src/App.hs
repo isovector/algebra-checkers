@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveFoldable              #-}
+{-# LANGUAGE DeriveFunctor               #-}
+{-# LANGUAGE DeriveTraversable           #-}
 {-# LANGUAGE FlexibleInstances           #-}
 {-# LANGUAGE MultiParamTypeClasses       #-}
 {-# LANGUAGE TypeFamilies                #-}
@@ -41,10 +44,15 @@ varid :: Parser String
 varid = matchTokenWithStr Varid
 
 
-opening :: Parser ()
-opening = asum
+openingButNotEof :: Parser ()
+openingButNotEof = asum
   [ void $ try $ matchToken $ Open 1
   , void $ matchToken $ Indent 1
+  ]
+
+opening :: Parser ()
+opening = asum
+  [ openingButNotEof
   , eof
   ]
 
@@ -64,10 +72,10 @@ unstringLit = init . drop 1
 stringLit :: Parser String
 stringLit = fmap unstringLit $ matchTokenWithStr StringLit
 
-getLocation :: Parser SourcePos
+getLocation :: Parser Pos
 getLocation = do
-  (_, (start, _)) <- fmap (maybe (Whitespace, (Pos 0 0 0, "")) id . listToMaybe) getInput
-  pure $ posToSourcePos start
+  (_, (start, _)) <- fmap (maybe (Whitespace, (Pos maxBound 0 0, "")) id . listToMaybe) getInput
+  pure start
 
 
 spanning :: Parser a -> Parser (SourceSpan, a)
@@ -77,7 +85,7 @@ spanning p = do
   end <- getLocation
   pure (SourceSpan start end, a)
 
-parseTypeSig :: Parser Decl
+parseTypeSig :: Parser (Decl SourceSpan)
 parseTypeSig = do
   opening
   name <- varid
@@ -86,7 +94,7 @@ parseTypeSig = do
   pure $ TypeSig name span
 
 
-parseLaw :: Parser Decl
+parseLaw :: Parser (Decl SourceSpan)
 parseLaw = do
   opening
   name <- flip label "rule name" $ stringLit
@@ -97,7 +105,7 @@ parseLaw = do
   pure $ Law name lhs rhs
 
 
-parseModel :: Parser Decl
+parseModel :: Parser (Decl SourceSpan)
 parseModel = do
   opening
   modelOf
@@ -107,28 +115,47 @@ parseModel = do
     void $ manyTill (fmap fst anyToken) $ lookAhead opening
   pure $ Model span
 
+parseOther :: Parser (Decl SourceSpan)
+parseOther = do
+  openingButNotEof
+  (span, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead opening
+  pure $ Other span
 
-data Decl
-  = TypeSig String SourceSpan
-  | Law String SourceSpan SourceSpan
-  | Model SourceSpan
-  deriving (Eq, Ord, Show)
 
-parseDecl :: Parser Decl
+data Decl a
+  = TypeSig String a
+  | Law String a a
+  | Model a
+  | Other a
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+parseDecl :: Parser (Decl SourceSpan)
 parseDecl = asum
   [ try parseTypeSig
   , try parseModel
-  , parseLaw
+  , try parseLaw
+  , parseOther
   ]
 
-data SourceSpan = SourceSpan SourcePos SourcePos
+data SourceSpan = SourceSpan Pos Pos
   deriving (Eq, Ord, Show)
+
+
+betweenSpan :: String -> SourceSpan -> String
+betweenSpan str (SourceSpan (Pos a _ _) (Pos b _ _)) =
+  take (b - a) $ drop a str
+
+
+parseAndSubst :: String -> Either ParseError [Decl String]
+parseAndSubst str
+  = fmap (fmap $ fmap $ betweenSpan str)
+  . parse (many parseDecl) "test-file"
+  $ lexerPass1 str
 
 
 main :: IO ()
 main
   = traverse_ (traverse_ print)
-  . parse (many parseDecl) "test-file"
-  . lexerPass1
+  . parseAndSubst
     =<< readFile "/home/sandy/prj/algebra-checkers/test-file"
 
