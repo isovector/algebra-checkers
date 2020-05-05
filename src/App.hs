@@ -186,7 +186,8 @@ parseDecl = asum
 
 
 data StuffMap a = StuffMap
-  { smLaws       :: [Law a]
+  { smHeader     :: [a]
+  , smLaws       :: [Law a]
   , smFunModels  :: [FunModel a]
   , smTypeModels :: [TypeModel a]
   , smOther      :: [Decl a]
@@ -194,24 +195,28 @@ data StuffMap a = StuffMap
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 instance Semigroup (StuffMap a) where
-  StuffMap a1 b1 c1 d1 <> StuffMap a2 b2 c2 d2 =
-    StuffMap (a1 <> a2) (b1 <> b2) (c1 <> c2) (d1 <> d2)
+  StuffMap a1 b1 c1 d1 e1 <> StuffMap a2 b2 c2 d2 e2 =
+    StuffMap (a1 <> a2) (b1 <> b2) (c1 <> c2) (d1 <> d2) (e1 <> e2)
 
 instance Monoid (StuffMap a) where
-  mempty = StuffMap mempty mempty mempty mempty
+  mempty = StuffMap mempty mempty mempty mempty mempty
 
 buildStuffMap :: [Decl a] -> StuffMap a
 buildStuffMap = foldMap $ \case
-  LawD       t -> StuffMap [t] mempty mempty mempty
-  FunModelD  t -> StuffMap mempty [t] mempty mempty
-  TypeModelD t -> StuffMap mempty mempty [t] mempty
-  t            -> StuffMap mempty mempty mempty [t]
+  LawD       t -> StuffMap mempty [t] mempty mempty mempty
+  FunModelD  t -> StuffMap mempty mempty [t] mempty mempty
+  TypeModelD t -> StuffMap mempty mempty mempty [t] mempty
+  t            -> StuffMap mempty mempty mempty mempty [t]
 
 
-insertImport :: a -> StuffMap a -> StuffMap a
-insertImport im sm =
+addImport :: a -> StuffMap a -> StuffMap a
+addImport im sm =
   let (header, rest) = span (not . isOpening) $ smOther sm
    in sm { smOther = mconcat [ header, [Opening, Import im], drop 1 rest ] }
+
+addHeader :: a -> StuffMap a -> StuffMap a
+addHeader a sm =
+  sm { smHeader = a : smHeader sm }
 
 isOpening :: Decl a -> Bool
 isOpening Opening = True
@@ -248,7 +253,8 @@ passThrough (Import m)    = "import " ++ m ++ "\n"
 dumpStuffMap :: StuffMap String -> String
 dumpStuffMap sm =
   unlines
-    [ foldMap passThrough $ smOther sm
+    [ unlines $ smHeader sm
+    , foldMap passThrough $ smOther sm
     , "pure []"
     , "prop_laws :: [Property]"
     , "prop_laws = [theoremsOf| do"
@@ -283,7 +289,8 @@ main
   = traverse_
   ( putStrLn
   . dumpStuffMap
-  . insertImport "Test.QuickCheck"
+  . addHeader "{-# LANGUAGE TemplateHaskell #-}"
+  . addImport "Test.QuickCheck"
   . buildStuffMap
   )
   . parseAndSubst
