@@ -54,11 +54,15 @@ conid :: Parser String
 conid = matchTokenWithStr Conid
 
 
-openingButNotEof :: Parser ()
-openingButNotEof = asum
-  [ void $ try $ matchToken $ Open 1
-  , void $ matchToken $ Indent 1
+nextIndent :: Parser ()
+nextIndent = asum
+  [ openingButNotEof
+  , void $ matchToken $ Open 1
+  , eof
   ]
+
+openingButNotEof :: Parser ()
+openingButNotEof = void $ matchToken $ Indent 1
 
 opening :: Parser ()
 opening = asum
@@ -100,7 +104,7 @@ parseTypeSig = do
   opening
   name <- varid
   typeSym
-  (span, _) <- spanning $ manyTill anyToken $ lookAhead opening
+  (span, _) <- spanning $ manyTill anyToken $ lookAhead nextIndent
   pure $ TypeSig name span
 
 
@@ -111,7 +115,7 @@ parseLaw = do
 
   (lhs, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead eqSym
   eqSym
-  (rhs, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead opening
+  (rhs, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead nextIndent
   pure $ LawD $ Law name lhs rhs
 
 
@@ -123,7 +127,7 @@ parseFunModel = do
     name <- varid
     void $ manyTill (fmap fst anyToken) $ lookAhead eqSym
     eqSym
-    void $ manyTill (fmap fst anyToken) $ lookAhead opening
+    void $ manyTill (fmap fst anyToken) $ lookAhead nextIndent
     pure name
   pure $ FunModelD $ FunModel name span
 
@@ -135,22 +139,20 @@ parseTypeModel = do
     name <- conid
     void $ manyTill (fmap fst anyToken) $ lookAhead eqSym
     eqSym
-    void $ manyTill (fmap fst anyToken) $ lookAhead opening
+    void $ manyTill (fmap fst anyToken) $ lookAhead nextIndent
     pure name
   pure $ TypeModelD $ TypeModel name span
-
-parseImport :: Parser (Decl SourceSpan)
-parseImport = do
-  opening
-  void $ matchTokenStr Reservedid "import"
-  (span, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead opening
-  pure $ Import span
 
 parseOther :: Parser (Decl SourceSpan)
 parseOther = do
   openingButNotEof
-  (span, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead opening
+  (span, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead nextIndent
   pure $ Other span
+
+parseOpening :: Parser (Decl SourceSpan)
+parseOpening = do
+  void $ matchToken $ Open 1
+  pure Opening
 
 
 data Decl a
@@ -160,6 +162,7 @@ data Decl a
   | TypeModelD (TypeModel a)
   | Import a
   | Other a
+  | Opening
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Law a = Law String a a
@@ -173,11 +176,11 @@ data TypeModel a = TypeModel String a
 
 parseDecl :: Parser (Decl SourceSpan)
 parseDecl = asum
-  [ try parseTypeSig
+  [ try parseOpening
+  , try parseTypeSig
   , try parseFunModel
   , try parseTypeModel
   , try parseLaw
-  , try parseImport
   , parseOther
   ]
 
@@ -205,15 +208,14 @@ buildStuffMap = foldMap $ \case
   t            -> StuffMap mempty mempty mempty [t]
 
 
--- TODO(sandy): Does the wrong thing if there are no imports.
 insertImport :: a -> StuffMap a -> StuffMap a
 insertImport im sm =
-  let (header, rest) = span (not . isImport) $ smOther sm
-   in sm { smOther = mconcat [ header, [Import im], rest ] }
+  let (header, rest) = span (not . isOpening) $ smOther sm
+   in sm { smOther = mconcat [ header, [Opening, Import im], drop 1 rest ] }
 
-isImport :: Decl a -> Bool
-isImport (Import _) = True
-isImport _          = False
+isOpening :: Decl a -> Bool
+isOpening Opening = True
+isOpening _       = False
 
 
 data SourceSpan = SourceSpan Pos Pos
@@ -229,17 +231,18 @@ parseAndSubst :: String -> Either ParseError [Decl String]
 parseAndSubst str
   = fmap (fmap $ fmap $ betweenSpan str)
   . parse (many parseDecl) "test-file"
-  $ lexerPass1 str
+  $ insertIndents =<< lexerPass1 str
 
 
 
 passThrough :: Decl String -> String
 passThrough (TypeSig z m) = mconcat [z, " :: ", m]
-passThrough LawD{}         = mempty
+passThrough LawD{}        = mempty
 passThrough FunModelD{}   = mempty
 passThrough TypeModelD{}  = mempty
 passThrough (Other m)     = m
-passThrough (Import m)    = "import " ++ m
+passThrough Opening       = mempty
+passThrough (Import m)    = "import " ++ m ++ "\n"
 
 
 dumpStuffMap :: StuffMap String -> String
@@ -271,10 +274,18 @@ dumpLaw (Law name lhs rhs) =
     , ")\n"
     ]
 
+insertIndents :: PosToken -> [PosToken]
+insertIndents a@(Open 1, _) = [a, (Indent 1, (Pos 0 0 0, ""))]
+insertIndents a = [a]
 
 main :: IO ()
 main
-  = traverse_ (putStrLn . dumpStuffMap . buildStuffMap)
+  = traverse_
+  ( putStrLn
+  . dumpStuffMap
+  . insertImport "Test.QuickCheck"
+  . buildStuffMap
+  )
   . parseAndSubst
     =<< readFile "/home/sandy/prj/algebra-checkers/test-file"
 
