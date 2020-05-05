@@ -1,15 +1,22 @@
-{-# LANGUAGE DeriveFoldable              #-}
-{-# LANGUAGE DeriveFunctor               #-}
-{-# LANGUAGE DeriveTraversable           #-}
-{-# LANGUAGE FlexibleInstances           #-}
-{-# LANGUAGE MultiParamTypeClasses       #-}
-{-# LANGUAGE TypeFamilies                #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DeriveFoldable        #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveTraversable     #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# OPTIONS_GHC -fno-warn-orphans        #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 module App where
 
+
+import Data.Char
 import Data.Maybe
 import Debug.Trace
 import Control.Monad
@@ -42,6 +49,9 @@ matchTokenWithStr t = prim $ \(t', (_, s)) -> bool Nothing (Just s) $ (==) t t'
 
 varid :: Parser String
 varid = matchTokenWithStr Varid
+
+conid :: Parser String
+conid = matchTokenWithStr Conid
 
 
 openingButNotEof :: Parser ()
@@ -102,18 +112,39 @@ parseLaw = do
   (lhs, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead eqSym
   eqSym
   (rhs, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead opening
-  pure $ Law name lhs rhs
+  pure $ LawD $ Law name lhs rhs
 
 
-parseModel :: Parser (Decl SourceSpan)
-parseModel = do
+parseFunModel :: Parser (Decl SourceSpan)
+parseFunModel = do
   opening
   modelOf
-  (span, _) <- spanning $ do
+  (span, name) <- spanning $ do
+    name <- varid
     void $ manyTill (fmap fst anyToken) $ lookAhead eqSym
     eqSym
     void $ manyTill (fmap fst anyToken) $ lookAhead opening
-  pure $ Model span
+    pure name
+  pure $ FunModelD $ FunModel name span
+
+parseTypeModel :: Parser (Decl SourceSpan)
+parseTypeModel = do
+  opening
+  modelOf
+  (span, name) <- spanning $ do
+    name <- conid
+    void $ manyTill (fmap fst anyToken) $ lookAhead eqSym
+    eqSym
+    void $ manyTill (fmap fst anyToken) $ lookAhead opening
+    pure name
+  pure $ TypeModelD $ TypeModel name span
+
+parseImport :: Parser (Decl SourceSpan)
+parseImport = do
+  opening
+  void $ matchTokenStr Reservedid "import"
+  (span, _) <- spanning $ manyTill (fmap fst anyToken) $ lookAhead opening
+  pure $ Import span
 
 parseOther :: Parser (Decl SourceSpan)
 parseOther = do
@@ -124,18 +155,66 @@ parseOther = do
 
 data Decl a
   = TypeSig String a
-  | Law String a a
-  | Model a
+  | LawD (Law a)
+  | FunModelD (FunModel a)
+  | TypeModelD (TypeModel a)
+  | Import a
   | Other a
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+data Law a = Law String a a
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+data FunModel a = FunModel String a
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+data TypeModel a = TypeModel String a
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 parseDecl :: Parser (Decl SourceSpan)
 parseDecl = asum
   [ try parseTypeSig
-  , try parseModel
+  , try parseFunModel
+  , try parseTypeModel
   , try parseLaw
+  , try parseImport
   , parseOther
   ]
+
+
+data StuffMap a = StuffMap
+  { smLaws       :: [Law a]
+  , smFunModels  :: [FunModel a]
+  , smTypeModels :: [TypeModel a]
+  , smOther      :: [Decl a]
+  }
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+instance Semigroup (StuffMap a) where
+  StuffMap a1 b1 c1 d1 <> StuffMap a2 b2 c2 d2 =
+    StuffMap (a1 <> a2) (b1 <> b2) (c1 <> c2) (d1 <> d2)
+
+instance Monoid (StuffMap a) where
+  mempty = StuffMap mempty mempty mempty mempty
+
+buildStuffMap :: [Decl a] -> StuffMap a
+buildStuffMap = foldMap $ \case
+  LawD       t -> StuffMap [t] mempty mempty mempty
+  FunModelD  t -> StuffMap mempty [t] mempty mempty
+  TypeModelD t -> StuffMap mempty mempty [t] mempty
+  t            -> StuffMap mempty mempty mempty [t]
+
+
+-- TODO(sandy): Does the wrong thing if there are no imports.
+insertImport :: a -> StuffMap a -> StuffMap a
+insertImport im sm =
+  let (header, rest) = span (not . isImport) $ smOther sm
+   in sm { smOther = mconcat [ header, [Import im], rest ] }
+
+isImport :: Decl a -> Bool
+isImport (Import _) = True
+isImport _          = False
+
 
 data SourceSpan = SourceSpan Pos Pos
   deriving (Eq, Ord, Show)
@@ -153,9 +232,49 @@ parseAndSubst str
   $ lexerPass1 str
 
 
+
+passThrough :: Decl String -> String
+passThrough (TypeSig z m) = mconcat [z, " :: ", m]
+passThrough LawD{}         = mempty
+passThrough FunModelD{}   = mempty
+passThrough TypeModelD{}  = mempty
+passThrough (Other m)     = m
+passThrough (Import m)    = "import " ++ m
+
+
+dumpStuffMap :: StuffMap String -> String
+dumpStuffMap sm =
+  unlines
+    [ foldMap passThrough $ smOther sm
+    , "pure []"
+    , "prop_laws :: [Property]"
+    , "prop_laws = [theoremsOf| do"
+    , foldMap dumpLaw $ smLaws sm
+    , "|]"
+    ]
+
+dropEndWhile :: (a -> Bool) -> [a] -> [a]
+dropEndWhile p = foldr (\x xs -> if p x && null xs then [] else x:xs) []
+
+trimTrailingSpace :: String -> String
+trimTrailingSpace = dropEndWhile isSpace
+
+dumpLaw :: Law String -> String
+dumpLaw (Law name lhs rhs) =
+  mconcat
+    [ "law "
+    , show name
+    , " $ ("
+    , trimTrailingSpace lhs
+    , ") == ("
+    , trimTrailingSpace rhs
+    , ")\n"
+    ]
+
+
 main :: IO ()
 main
-  = traverse_ (traverse_ print)
+  = traverse_ (putStrLn . dumpStuffMap . buildStuffMap)
   . parseAndSubst
     =<< readFile "/home/sandy/prj/algebra-checkers/test-file"
 
