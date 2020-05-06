@@ -15,13 +15,14 @@ module AlgebraCheckers.Typechecking
   , typecheckExp
   ) where
 
-import           AlgebraCheckers.Unification (unboundVars)
+import           AlgebraCheckers.Unification (unboundVars, varsToQuantify)
 import           Control.Arrow (second)
 import           Control.Monad
 import           Data.Foldable
 import           Data.Generics.Aliases
 import           Data.Generics.Schemes
 import qualified Data.Map as M
+import           Data.Maybe
 import           Data.Traversable
 import           Data.Word
 import           Language.Haskell.TH.Datatype (applySubstitution, resolveTypeSynonyms)
@@ -53,7 +54,9 @@ instantiate' t = pure t
 
 typecheck :: MonadTc m => Scope -> Exp -> m Type
 typecheck scope = (substZonked =<<) . \case
-  UnboundVarE n -> pure $ scope M.! n
+  UnboundVarE n -> do
+    t <- freshTy
+    pure $ fromMaybe t $ M.lookup n scope
   ConE n -> do
     qReify n >>= \case
       DataConI _ t _ -> instantiate' t
@@ -112,7 +115,7 @@ bndrName (KindedTV n _) = n
 
 inferUnboundVars :: Exp -> Q Scope
 inferUnboundVars e = runTc $ do
-  let unbound = unboundVars e
+  let unbound = varsToQuantify e
   vars <-
     fmap M.fromList $ for unbound $ \var -> do
       t <- freshTy

@@ -4,9 +4,11 @@
 
 module AlgebraCheckers.Unification where
 
+import           AlgebraCheckers.Utils
 import           Control.Applicative
 import           Control.Monad.State
 import           Control.Monad.Trans.Writer
+import           Data.Char
 import           Data.Data
 import           Data.Function
 import           Data.Generics.Aliases
@@ -15,7 +17,7 @@ import qualified Data.Map as M
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
 import           Prelude hiding (exp)
-import {-# SOURCE #-} AlgebraCheckers.Types
+import           {-# SOURCE #-} AlgebraCheckers.Types
 
 
 data SubExp = SubExp
@@ -31,11 +33,27 @@ deModuleName = everywhere $ mkT $ \case
   n       -> n
 
 
+varsToQuantify :: Exp -> [Name]
+varsToQuantify = everything (++) $
+  mkQ [] $ \case
+    UnboundVarE n
+      | length (dropEndWhile isPrimeChar $ nameBase n) == 1 -> [n]
+    _ -> []
+
 unboundVars :: Exp -> [Name]
 unboundVars = everything (++) $
   mkQ [] $ \case
     UnboundVarE n -> [n]
     _ -> []
+
+unknownVars :: Exp -> [Name]
+unknownVars e =
+  let to_quantify = varsToQuantify e
+   in filter (not . flip elem to_quantify) $ unboundVars e
+
+isPrimeChar :: Char -> Bool
+isPrimeChar '\'' = True
+isPrimeChar c    = isDigit c
 
 
 ------------------------------------------------------------------------------

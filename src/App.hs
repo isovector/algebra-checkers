@@ -27,6 +27,7 @@ import Text.Parsec.Pos
 import Text.Parsec.Combinator
 import Data.Void
 import Data.Foldable
+import AlgebraCheckers.Utils
 
 
 type Parser = Parsec [PosToken] ()
@@ -261,9 +262,6 @@ dumpStuffMap sm =
     , foldMap dumpLaw $ smLaws sm
     , "|])"
     ]
-
-dropEndWhile :: (a -> Bool) -> [a] -> [a]
-dropEndWhile p = foldr (\x xs -> if p x && null xs then [] else x:xs) []
 
 trimTrailingSpace :: String -> String
 trimTrailingSpace = dropEndWhile isSpace

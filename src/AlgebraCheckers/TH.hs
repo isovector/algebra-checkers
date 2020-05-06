@@ -13,6 +13,7 @@ import AlgebraCheckers.Patterns
 import AlgebraCheckers.Ppr
 import AlgebraCheckers.Suggestions
 import AlgebraCheckers.Theorems
+import AlgebraCheckers.Unification
 import AlgebraCheckers.Typechecking
 import AlgebraCheckers.Types
 import Control.Monad
@@ -63,6 +64,16 @@ propTestEq t@(Law _ exp1 exp2) = do
     |]
 
 
+buildPropTests :: [Theorem] -> Q [Exp]
+buildPropTests ts = do
+  let unknown = join $ do
+        Law _ a b <- ts
+        pure $ unknownVars a ++ unknownVars b
+  unless (null unknown) $
+    fail $ "Unknown variables: " ++ show unknown
+  traverse propTestEq ts
+
+
 ------------------------------------------------------------------------------
 -- | Generate QuickCheck property tests for the given model.
 --
@@ -85,7 +96,8 @@ testModelImpl e = do
   m <- thisModule
   let theorems = theorize m $ parseLaws e
   putQ theorems
-  listE $ fmap propTestEq theorems
+  tests <- buildPropTests theorems
+  listE $ fmap pure tests
 
 parseLaws :: Exp -> [Law LawSort]
 parseLaws (DoE z) = concatMap collect z
@@ -111,7 +123,8 @@ theoremsOfImpl z = do
     printStuff md "Theorems"       theorems
     printStuff md "Dodgy Theorems" dodgy
     printStuff md "Contradictions" contradicts
-  listE $ fmap propTestEq $ theorems ++ dodgy ++ contradicts
+  tests <- buildPropTests $ theorems ++ dodgy ++ contradicts
+  listE $ fmap pure tests
 
 printStuff :: Module -> String -> [Theorem] -> IO ()
 printStuff md sort laws =
