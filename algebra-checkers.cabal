@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5d3bf92bb8d45754a77ce067698625d53aca1dfeb758bb74565b1a093d58e38d
+-- hash: 3ae88304ba625c45d80781607d89444264cd858a51e97100f2f787fee0f59dcd
 
 name:           algebra-checkers
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
       AlgebraCheckers
       AlgebraCheckers.Tools
       AlgebraCheckers.Typechecking
+      AlgebraCheckers.Utils
       App
   other-modules:
       AlgebraCheckers.Homos
