@@ -12,6 +12,7 @@ module AlgebraCheckers.Typechecking
   , typecheck
   , monomorphize
   , pattern (:->)
+  , typecheckExp
   ) where
 
 import           AlgebraCheckers.Unification (unboundVars)
@@ -118,6 +119,16 @@ inferUnboundVars e = runTc $ do
       pure (var, t)
   void $ typecheck vars e
   traverse substZonked vars
+
+typecheckExp :: Exp -> Q Type
+typecheckExp e = runTc $ do
+  let unbound = unboundVars e
+  vars <-
+    fmap M.fromList $ for unbound $ \var -> do
+      t <- freshTy
+      pure (var, t)
+  z <- typecheck vars e
+  substZonked z
 
 
 pattern (:->) :: Type -> Type -> Type

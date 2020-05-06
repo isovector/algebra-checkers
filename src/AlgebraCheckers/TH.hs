@@ -44,7 +44,9 @@ mkPattern nm ty = do
 propTestEq :: Theorem -> ExpQ
 propTestEq t@(Law _ exp1 exp2) = do
   md <- thisModule
-  eqexp <- [e| $(pure exp1) =-= $(pure exp2) |]
+  eq2exp <- [e| $(pure exp1) `eq2` $(pure exp2) |]
+  AppT _ z <- fmap monomorphize $ typecheckExp eq2exp
+  eqexp <- [e| ($(pure exp1) :: $(pure z)) =-= ($(pure exp2) :: $(pure z)) |]
   inferred <- fmap M.toList $ inferUnboundVars eqexp
   pats <-
     for inferred $ \(var, ty) -> do

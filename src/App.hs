@@ -257,9 +257,9 @@ dumpStuffMap sm =
     , foldMap passThrough $ smOther sm
     , "pure []"
     , "prop_laws :: [Property]"
-    , "prop_laws = [theoremsOf| do"
+    , "prop_laws = $(theoremsOf [e| do"
     , foldMap dumpLaw $ smLaws sm
-    , "|]"
+    , "|])"
     ]
 
 dropEndWhile :: (a -> Bool) -> [a] -> [a]
@@ -274,15 +274,27 @@ dumpLaw (Law name lhs rhs) =
     [ "law "
     , show name
     , " $ ("
-    , trimTrailingSpace lhs
+    , trimTrailingSpace $ removeComments lhs
     , ") == ("
-    , trimTrailingSpace rhs
+    , trimTrailingSpace $ removeComments rhs
     , ")\n"
     ]
 
 insertIndents :: PosToken -> [PosToken]
 insertIndents a@(Open 1, _) = [a, (Indent 1, (Pos 0 0 0, ""))]
 insertIndents a = [a]
+
+rmSpace2 :: [PosToken] -> [PosToken]
+rmSpace2 = filter $ notWhite . fst
+
+notWhite :: Token -> Bool
+notWhite t = t/=Commentstart && t/=Comment &&
+             t/=NestedComment
+
+
+removeComments :: String -> String
+removeComments = foldMap (snd . snd) . rmSpace2 . lexerPass0
+
 
 main :: IO ()
 main

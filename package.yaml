@@ -40,6 +40,17 @@ dependencies:
 ghc-options:
   - -Wall
 
+executables:
+  algebra-check:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - algebra-checkers
+
 library:
   source-dirs: src
   other-modules:
