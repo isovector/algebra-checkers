@@ -37,7 +37,7 @@ varsToQuantify :: Exp -> [Name]
 varsToQuantify = everything (++) $
   mkQ [] $ \case
     UnboundVarE n
-      | length (dropEndWhile isPrimeChar $ nameBase n) == 1 -> [n]
+      | length (dropEndWhile isPrimeChar $ nameBase n) <= 2 -> [n]
     _ -> []
 
 unboundVars :: Exp -> [Name]
