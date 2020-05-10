@@ -106,7 +106,7 @@ parseTypeSig = do
   name <- varid
   typeSym
   (span, _) <- spanning $ manyTill anyToken $ lookAhead nextIndent
-  pure $ TypeSig name span
+  pure $ TypeSigD $ TypeSig name span
 
 
 parseLaw :: Parser (Decl SourceSpan)
@@ -157,13 +157,16 @@ parseOpening = do
 
 
 data Decl a
-  = TypeSig String a
+  = TypeSigD (TypeSig a)
   | LawD (Law a)
   | FunModelD (FunModel a)
   | TypeModelD (TypeModel a)
   | Import a
   | Other a
   | Opening
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+data TypeSig a = TypeSig String a
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Law a = Law String a a
@@ -177,7 +180,8 @@ data TypeModel a = TypeModel String a
 
 parseDecl :: Parser (Decl SourceSpan)
 parseDecl = asum
-  [ try parseOpening
+  [ try parseTypeSig
+  , try parseOpening
   , try parseTypeSig
   , try parseFunModel
   , try parseTypeModel
@@ -192,22 +196,30 @@ data StuffMap a = StuffMap
   , smFunModels  :: [FunModel a]
   , smTypeModels :: [TypeModel a]
   , smOther      :: [Decl a]
+  , smSigs       :: [TypeSig a]
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 instance Semigroup (StuffMap a) where
-  StuffMap a1 b1 c1 d1 e1 <> StuffMap a2 b2 c2 d2 e2 =
-    StuffMap (a1 <> a2) (b1 <> b2) (c1 <> c2) (d1 <> d2) (e1 <> e2)
+  StuffMap a1 b1 c1 d1 e1 f1 <> StuffMap a2 b2 c2 d2 e2 f2 =
+    StuffMap
+      (a1 <> a2)
+      (b1 <> b2)
+      (c1 <> c2)
+      (d1 <> d2)
+      (e1 <> e2)
+      (f1 <> f2)
 
 instance Monoid (StuffMap a) where
-  mempty = StuffMap mempty mempty mempty mempty mempty
+  mempty = StuffMap mempty mempty mempty mempty mempty mempty
 
 buildStuffMap :: [Decl a] -> StuffMap a
 buildStuffMap = foldMap $ \case
-  LawD       t -> StuffMap mempty [t] mempty mempty mempty
-  FunModelD  t -> StuffMap mempty mempty [t] mempty mempty
-  TypeModelD t -> StuffMap mempty mempty mempty [t] mempty
-  t            -> StuffMap mempty mempty mempty mempty [t]
+  LawD       t   -> StuffMap mempty [t] mempty mempty mempty mempty
+  FunModelD  t   -> StuffMap mempty mempty [t] mempty mempty mempty
+  TypeModelD t   -> StuffMap mempty mempty mempty [t] mempty mempty
+  d@(TypeSigD t) -> StuffMap mempty mempty mempty mempty [d] [t]
+  t              -> StuffMap mempty mempty mempty mempty [t] mempty
 
 
 addImport :: a -> StuffMap a -> StuffMap a
@@ -242,26 +254,38 @@ parseAndSubst str
 
 
 passThrough :: Decl String -> String
-passThrough (TypeSig z m) = mconcat [z, " :: ", m]
-passThrough LawD{}        = mempty
-passThrough FunModelD{}   = mempty
-passThrough TypeModelD{}  = mempty
-passThrough (Other m)     = m
-passThrough Opening       = mempty
-passThrough (Import m)    = "import " ++ m ++ "\n"
+passThrough (TypeSigD (TypeSig z m))   = mconcat [z, " :: ", m]
+passThrough LawD{}                     = mempty
+passThrough (FunModelD (FunModel _ m)) = m
+passThrough TypeModelD{}               = mempty
+passThrough (Other m)                  = m
+passThrough Opening                    = mempty
+passThrough (Import m)                 = "import " ++ m ++ "\n"
 
 
 dumpStuffMap :: StuffMap String -> String
-dumpStuffMap sm =
-  unlines
-    [ unlines $ smHeader sm
-    , foldMap passThrough $ smOther sm
-    , "pure []"
-    , "prop_laws :: [Property]"
-    , "prop_laws = $(theoremsOf [e| do"
-    , foldMap dumpLaw $ smLaws sm
-    , "|])"
-    ]
+dumpStuffMap sm = unlines
+  [ unlines $ smHeader sm
+  , foldMap passThrough $ smOther sm
+  , "pure []"
+  , ""
+  , "---------- MODELS BEGIN HERE ----------"
+  , "modelsFor =<< [d|"
+  , foldMap (mappend "  " . passThrough) $ fmap FunModelD (smFunModels sm) <> fmap TypeSigD (smSigs sm)
+  , "  |]"
+  , ""
+  , dumpLaws $ smLaws sm
+  ]
+
+dumpLaws :: [Law String] -> String
+dumpLaws [] = mempty
+dumpLaws laws = unlines
+  [ "---------- LAWS BEGIN HERE ----------"
+  , "prop_laws :: [Property]"
+  , "prop_laws = $(theoremsOf [e| do"
+  , foldMap dumpLaw laws
+  , "|])"
+  ]
 
 trimTrailingSpace :: String -> String
 trimTrailingSpace = dropEndWhile isSpace
@@ -294,15 +318,24 @@ removeComments :: String -> String
 removeComments = foldMap (snd . snd) . rmSpace2 . lexerPass0
 
 
+app :: [Decl String] -> String
+app
+  = dumpStuffMap
+  . addHeader "{-# LANGUAGE TemplateHaskell #-}"
+  . addHeader "{-# OPTIONS_GHC -fno-warn-unused-imports #-}"
+  . addImport "Test.QuickCheck"
+  . addImport "Test.QuickCheck.Checkers (Model (..), EqProp (..))"
+  . addImport "AlgebraCheckers (law)"
+  . addImport "AlgebraCheckers.Tools (ModeledBy)"
+  . addImport "AlgebraCheckers.TH (theoremsOf)"
+  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel)"
+  . buildStuffMap
+
+
+
 main :: IO ()
 main
-  = traverse_
-  ( putStrLn
-  . dumpStuffMap
-  . addHeader "{-# LANGUAGE TemplateHaskell #-}"
-  . addImport "Test.QuickCheck"
-  . buildStuffMap
-  )
+  = traverse_ (putStrLn . app)
   . parseAndSubst
-    =<< readFile "/home/sandy/prj/algebra-checkers/test-file"
+    =<< readFile "/home/sandy/prj/algebra-checkers/test/App.hs"
 

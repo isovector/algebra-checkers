@@ -1,16 +1,12 @@
 module Main where
 
-import qualified App as A
+import App (app, parseAndSubst)
 import System.Environment
 
 main :: IO ()
 main = do
   (_:inf:outf:_) <- getArgs
   file <- readFile inf
-  let Right z = A.parseAndSubst file
-  writeFile outf
-    . A.dumpStuffMap
-    . A.addHeader "{-# LANGUAGE TemplateHaskell #-}"
-    . A.addImport "Test.QuickCheck"
-    $ A.buildStuffMap z
+  let Right z = parseAndSubst file
+  writeFile outf $ app z
 
