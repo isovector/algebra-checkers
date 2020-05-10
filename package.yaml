@@ -36,6 +36,7 @@ dependencies:
 - th-abstraction
 - haskell-lexer
 - parsec
+- string-interpolate
 
 ghc-options:
   - -Wall
