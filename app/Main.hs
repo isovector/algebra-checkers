@@ -1,6 +1,7 @@
 module Main where
 
-import App (app, parseAndSubst)
+import App (app)
+import App.Parser (parseAndSubst)
 import System.Environment
 
 main :: IO ()

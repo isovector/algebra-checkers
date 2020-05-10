@@ -2,13 +2,11 @@
 
 module App where
 
-import           AlgebraCheckers.Utils
 import           App.Parser
+import           App.Sections
 import           App.Types
-import           Data.Char
 import           Data.Foldable
 import qualified Data.Map as M
-import           Language.Haskell.Lexer
 
 
 buildStuffMap :: [Decl a] -> StuffMap a
@@ -42,145 +40,6 @@ isOpening Opening = True
 isOpening _       = False
 
 
-dumpModeledBy :: TypeModel String -> String
-dumpModeledBy (TypeModel nm vars res) = unlines
-  [ mconcat
-    [ "type "
-    , mkHead nm vars
-    , " = "
-    , "ModeledBy ("
-    , sanitizeSpan res
-    , ")"
-    ]
-  , mconcat
-    [ "{-# WARNING "
-    , nm
-    , " \"This is a placeholder type.\" "
-    , "#-}"
-    ]
-  ]
-
-
-dumpEmptyType :: String -> [String] -> String
-dumpEmptyType nm vars = unlines
-  [ mconcat
-      [ "data "
-      , mkHead nm vars
-      , " = "
-      , nm
-      ]
-  , "  deriving (Eq, Show, Generic)"
-  , mconcat
-    [ "{-# WARNING "
-    , nm
-    , "\"This is a placeholder type.\""
-    , " #-}"
-    ]
-  , mconcat
-      [ "instance EqProp ("
-      , mkHead nm vars
-      , ") where"
-      ]
-  , "  (=-=) = (===)"
-  , mconcat
-      [ "instance Arbitrary ("
-      , mkHead nm vars
-      , ") where"
-      ]
-  , mconcat
-      [ "  arbitrary = pure "
-      , nm
-      ]
-  ]
-
-
-dumpEmptyAndModeledType
-    :: M.Map String (TypeModel String)
-    -> EmptyType
-    -> String
-dumpEmptyAndModeledType m (EmptyType nm vars) =
-  case M.lookup nm m of
-    Just tm -> dumpModeledBy tm
-    Nothing -> dumpEmptyType nm vars
-
-mkHead :: String -> [String] -> String
-mkHead nm vars = mconcat
-  [ nm
-  , " "
-  , unwords vars
-  ]
-
-
-passThrough :: Decl String -> String
-passThrough (TypeSigD (TypeSig z m))   = mconcat [z, " :: ", m]
-passThrough LawD{}                     = mempty
-passThrough (FunModelD (FunModel _ m)) = m
-passThrough TypeModelD{}               = mempty
-passThrough (Other m)                  = m
-passThrough Opening                    = mempty
-passThrough (Import m)                 = "import " ++ m ++ "\n"
-passThrough EmptyTypeD{}               = mempty
-
-
-dumpStuffMap :: StuffMap String -> String
-dumpStuffMap sm = unlines
-  [ unlines $ smHeader sm
-  , foldMap passThrough $ smOther sm
-  , foldMap (dumpEmptyAndModeledType (smTypeModels sm)) $ smEmptyTypes sm
-  , "pure []"
-  , ""
-  , "---------- MODELS BEGIN HERE ----------"
-  , "modelsFor =<< [d|"
-  , foldMap (mappend "  " . passThrough) $ fmap FunModelD (smFunModels sm) <> fmap TypeSigD (smSigs sm)
-  , "  |]"
-  , ""
-  , dumpLaws $ smLaws sm
-  ]
-
-
-dumpLaws :: [Law String] -> String
-dumpLaws [] = mempty
-dumpLaws laws = unlines
-  [ "---------- LAWS BEGIN HERE ----------"
-  , "prop_laws :: [Property]"
-  , "prop_laws = $(theoremsOf [e| do"
-  , foldMap dumpLaw laws
-  , "|])"
-  ]
-
-trimTrailingSpace :: String -> String
-trimTrailingSpace = dropEndWhile isSpace
-
-
-dumpLaw :: Law String -> String
-dumpLaw (Law name lhs rhs) =
-  mconcat
-    [ "law "
-    , show name
-    , " $ ("
-    , sanitizeSpan lhs
-    , ") == ("
-    , sanitizeSpan rhs
-    , ")\n"
-    ]
-
-
-sanitizeSpan :: String -> String
-sanitizeSpan = trimTrailingSpace . removeComments
-
-
-rmSpace2 :: [PosToken] -> [PosToken]
-rmSpace2 = filter $ notWhite . fst
-
-notWhite :: Token -> Bool
-notWhite t = t/=Commentstart && t/=Comment &&
-             t/=NestedComment
-
-
-removeComments :: String -> String
-removeComments = foldMap (snd . snd) . rmSpace2 . lexerPass0
-
-
 app :: [Decl String] -> String
 app
   = dumpStuffMap
@@ -195,7 +54,6 @@ app
   . addImport "AlgebraCheckers.TH (theoremsOf)"
   . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel)"
   . buildStuffMap
-
 
 
 main :: IO ()
