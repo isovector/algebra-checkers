@@ -27,12 +27,12 @@ import Test.QuickCheck hiding (collect)
 import Test.QuickCheck.Checkers ((=-=))
 
 
-showTheorem :: Module -> Theorem -> Doc
-showTheorem md thm =
+showTheorem :: Bool -> Module -> Theorem -> Doc
+showTheorem c md thm =
   case sanityCheck' md thm of
     Just contradiction ->
-      showContradictoryTheorem thm contradiction
-    Nothing -> showSaneTheorem thm
+      showContradictoryTheorem c thm contradiction
+    Nothing -> showSaneTheorem c thm
 
 mkPattern :: Name -> Type -> PatQ
 mkPattern nm ty = do
@@ -57,10 +57,10 @@ propTestEq t@(Law _ exp1 exp2) = do
         False -> pat
 
   [e|
-    counterexample $(lift $ render $ showTheorem md t) $
+    ($(lift $ render $ showTheorem False md t), counterexample $(lift $ render $ showTheorem False md t) $
       property $(lamE (fmap pure pats) [e|
        $(pure eqexp)
-      |])
+      |]))
     |]
 
 
@@ -131,7 +131,7 @@ printStuff md sort laws =
   when (not $ null laws) $ do
     putStrLn . render
              $ sep
-             $ text (sort ++ ":") : text "" : fmap (showTheorem md) laws
+             $ text (sort ++ ":") : text "" : fmap (showTheorem True md) laws
     putStrLn ""
     putStrLn ""
 

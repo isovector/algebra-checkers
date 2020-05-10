@@ -10,12 +10,12 @@ import Data.Foldable
 main :: IO ()
 main = hspec $ do
   describe "App" $ do
-    it "should generate models" $
-      property $ \n ->
-        AT.model_foo n `shouldBe` (n + 1)
+    it "should generate models" $ do
+      AT.model_foo 5 `shouldBe` 6
 
-    for_ AT.prop_model_laws $ \prop ->
-      it "should generate model tests" prop
+    describe "generated model tests" $ do
+      for_ AT.prop_model_laws $ \(name, prop) ->
+        it name prop
 
     describe "Empty types" $ do
       it "should be generated" $ do

@@ -23,69 +23,72 @@ import           Text.PrettyPrint.HughesPJ hiding ((<>))
 ppr :: Ppr a => a -> Doc
 ppr = to_HPJ_Doc . Ppr.ppr
 
-showTheoremSource :: TheoremSource -> Doc
-showTheoremSource (LawDefn n) =
-  text "definition of" <+> colorize lawColor (text $ show n)
-showTheoremSource (Interaction a b) =
+showTheoremSource :: Bool -> TheoremSource -> Doc
+showTheoremSource c (LawDefn n) =
+  text "definition of" <+> colorize c lawColor (text $ show n)
+showTheoremSource c (Interaction a b) =
   hsep
     [ text "implied by"
-    , colorize lawColor $ text $ show $ min a b
+    , colorize c lawColor $ text $ show $ min a b
     , text "and"
-    , colorize lawColor $ text $ show $ max a b
+    , colorize c lawColor $ text $ show $ max a b
     ]
 
-colorize :: Color -> Doc -> Doc
-colorize c doc
+colorize :: Bool -> Color -> Doc -> Doc
+colorize False _ doc = doc
+colorize True c doc
        = zeroWidthText (setSGRCode [SetColor Foreground Vivid c])
   Ppr.<> doc
   Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Foreground])
 
-deepColorize :: Color -> Doc -> Doc
-deepColorize c doc
+deepColorize :: Bool -> Color -> Doc -> Doc
+deepColorize False _ doc = doc
+deepColorize True c doc
        = zeroWidthText (setSGRCode [SetColor Foreground Vivid c, SetConsoleIntensity BoldIntensity])
   Ppr.<> doc
   Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Foreground, SetConsoleIntensity NormalIntensity])
 
-backcolorize :: Color -> Doc -> Doc
-backcolorize c doc
+backcolorize :: Bool -> Color -> Doc -> Doc
+backcolorize False _ doc = doc
+backcolorize True c doc
        = zeroWidthText (setSGRCode [SetColor Background Dull c])
   Ppr.<> doc
   Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Background])
 
-showSaneTheorem :: Theorem -> Doc
-showSaneTheorem (Law n a b) = hang (text "•") 2 $
+showSaneTheorem :: Bool -> Theorem -> Doc
+showSaneTheorem c (Law n a b) = hang (text "•") 2 $
   sep
-  [ hang (colorize exprColor $ ppr $ deModuleName a) 6
+  [ hang (colorize c exprColor $ ppr $ deModuleName a) 6
       . hang (text "=") 2
-      . colorize exprColor
+      . colorize c exprColor
       . ppr
       $ deModuleName b
-  , nest 2 $ parens $ showTheoremSource n
+  , nest 2 $ parens $ showTheoremSource c n
   ]
 
-showContradictoryTheorem :: Theorem -> TheoremProblem -> Doc
-showContradictoryTheorem (Law n a b) (Contradiction reason) = hang (text "•") 2 $
+showContradictoryTheorem :: Bool -> Theorem -> TheoremProblem -> Doc
+showContradictoryTheorem c (Law n a b) (Contradiction reason) = hang (text "•") 2 $
   sep
   [ vcat
-      [ backcolorize Red $ hang (ppr $ deModuleName a) 6
+      [ backcolorize c Red $ hang (ppr $ deModuleName a) 6
           . hang (text "=") 2
           . ppr
           $ deModuleName b
       , nest 2 $ pprContradiction reason
       ]
-  , nest 2 $ parens $ showTheoremSource n
+  , nest 2 $ parens $ showTheoremSource c n
   ]
-showContradictoryTheorem (Law n a b) (Dodgy reason) = hang (text "•") 2 $
+showContradictoryTheorem c (Law n a b) (Dodgy reason) = hang (text "•") 2 $
   sep
   [ vcat
-      [ hang (backcolorize Black $ ppr $ deModuleName a) 6
+      [ hang (backcolorize c Black $ ppr $ deModuleName a) 6
           . hang (text "=") 2
-          . backcolorize Black
+          . backcolorize c Black
           . ppr
           $ deModuleName b
       , nest 2 $ pprDodgy reason
       ]
-  , nest 2 $ parens $ showTheoremSource n
+  , nest 2 $ parens $ showTheoremSource c n
   ]
 
 plural :: String -> String -> [a] -> Doc

@@ -32,7 +32,7 @@ set :: Key -> Int -> Foo Int -> Foo Int
 set = undefined
 
 pure []
-lawTests :: [Property]
+lawTests :: [(String, Property)]
 lawTests = $(theoremsOf [e| do
   law "set/set"
       (set i x' (set i x s) == set i x' s)

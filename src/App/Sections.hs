@@ -66,11 +66,11 @@ dumpLaws laws = [i|
   #{endQuote} >>= putQ) >> pure []
 
 prop_laws :: [Property]
-prop_laws = $(do
+prop_laws = fmap snd $ $(do
   Just decs <- getQ
   pure decs)
 
-prop_model_laws :: [Property]
+prop_model_laws :: [(String, Property)]
 prop_model_laws = $(do
   Just decs <- getQ
   Just nms <- getQ
