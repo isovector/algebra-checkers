@@ -77,6 +77,14 @@ rebindVars m = everywhere $ mkT $ \case
       Nothing -> e
   t -> t
 
+sloppyRebindVars :: Data a => M.Map Name Exp -> a -> a
+sloppyRebindVars m = everywhere $ mkT $ \case
+  e@(VarE n) ->
+    case M.lookup (mkName $ nameBase n) m of
+      Just e' -> e'
+      Nothing -> e
+  t -> t
+
 
 renameVars :: Data a => (String -> String) -> a -> a
 renameVars f = everywhere $ mkT $ \case

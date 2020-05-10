@@ -1,11 +1,14 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes     #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module App.Sections where
 
 import           App.Cleaning
 import           App.Types
+import           Data.List
 import qualified Data.Map as M
 import           Data.String.Interpolate
+import           Language.Haskell.TH (Name)
 
 
 dumpModeledBy :: TypeModel String -> String
@@ -57,10 +60,22 @@ dumpLaws :: [Law String] -> String
 dumpLaws [] = mempty
 dumpLaws laws = [i|
 ---------- LAWS BEGIN HERE ----------
-prop_laws :: [Property]
-prop_laws = $(theoremsOf [e| do
+
+(theoremsOf [e| do
 #{foldMap dumpLaw laws}
-#{endQuote}
+  #{endQuote} >>= putQ) >> pure []
+
+prop_laws :: [Property]
+prop_laws = $(do
+  Just decs <- getQ
+  pure decs)
+
+prop_model_laws :: [Property]
+prop_model_laws = $(do
+  Just decs <- getQ
+  Just nms <- getQ
+  pure $ sloppyReplaceWithModelNames mkModelName nms decs
+  )
 |]
 
 
@@ -70,8 +85,12 @@ endQuote = "|]"
 
 dumpLaw :: Law String -> String
 dumpLaw (Law name lhs rhs) = [i|
-law "#{name}" $ (#{sanitizeSpan lhs}) == (#{sanitizeSpan rhs})
+  law "#{name}" $ (#{sanitizeSpan lhs}) == (#{sanitizeSpan rhs})
 |]
+
+
+dumpModeledFunctionNames :: [Name] -> String
+dumpModeledFunctionNames = intercalate ", " . fmap (\n -> [i|mkName "#{n}"|])
 
 
 mkHead :: String -> [String] -> String

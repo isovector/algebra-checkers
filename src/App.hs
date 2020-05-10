@@ -52,7 +52,8 @@ app
   . addImport "GHC.Generics (Generic)"
   . addImport "AlgebraCheckers (theoremsOf, law)"
   . addImport "AlgebraCheckers.Tools (ModeledBy)"
-  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel)"
+  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel, mkModelName, sloppyReplaceWithModelNames)"
+  . addImport "Language.Haskell.TH.Syntax (putQ, getQ, reportError)"
   . buildStuffMap
 
 
@@ -60,5 +61,5 @@ main :: IO ()
 main
   = traverse_ (putStrLn . app)
   . parseAndSubst
-    =<< readFile "/home/sandy/prj/algebra-checkers/test/App.hs"
+    =<< readFile "/home/sandy/prj/algebra-checkers/test/AppTest.hs"
 

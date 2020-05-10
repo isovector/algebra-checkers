@@ -14,6 +14,7 @@ import           Data.Generics.Schemes
 import qualified Data.Map as M
 import           Data.Maybe
 import           Language.Haskell.TH hiding (ppr, Arity)
+import           Language.Haskell.TH.Syntax (putQ)
 import           Test.QuickCheck.Checkers (Model, ModelOf, model)
 
 
@@ -41,6 +42,12 @@ replaceWithModelNames f
   = rebindVars
   . M.fromList
   . fmap (id &&& VarE . f)
+
+sloppyReplaceWithModelNames :: Data a => (Name -> Name) -> [Name] -> a -> a
+sloppyReplaceWithModelNames f
+  = sloppyRebindVars
+  . M.fromList
+  . fmap (mkName . nameBase &&& VarE . f . mkName . nameBase)
 
 
 mkModelName :: Name -> Name
@@ -86,11 +93,15 @@ tycheckFor nms (FunD name cls)
 tycheckFor _ _ = Nothing
 
 defines :: Dec -> Maybe Name
-defines (FunD name _) = pure name
-defines _             = Nothing
+defines (ValD (VarP name) _ _) = pure name
+defines (ValD _ _ _) = error "defines doesn't support complicated ValDs"
+defines (FunD name _)   = pure name
+defines _               = Nothing
 
 modelsFor :: [Dec] -> Q [Dec]
 modelsFor decs = do
   let nms = mapMaybe defines decs
-  mappend <$> traverse (modelFor nms) decs <*> pure (mapMaybe (tycheckFor nms) decs)
+  z <- mappend <$> traverse (modelFor nms) decs <*> pure (mapMaybe (tycheckFor nms) decs)
+  putQ nms
+  pure z
 
