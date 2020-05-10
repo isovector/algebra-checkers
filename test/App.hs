@@ -4,12 +4,8 @@
 
 module App where
 
-data Bar = Bar Int
-  deriving (Show, Eq)
-
-instance Model Bar where
-  type ModelOf Bar = Int
-  model (Bar i) = i
+type Bar
+μ Bar = Int
 
 
 foo :: Bar -> Int

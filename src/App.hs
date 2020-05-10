@@ -16,6 +16,8 @@
 module App where
 
 
+import qualified Data.Map as M
+import Data.Map (Map)
 import Data.Char
 import Data.Maybe
 import Debug.Trace
@@ -136,13 +138,22 @@ parseTypeModel :: Parser (Decl SourceSpan)
 parseTypeModel = do
   opening
   modelOf
+  name <- conid
+  vars <- manyTill varid $ lookAhead eqSym
+  eqSym
   (span, name) <- spanning $ do
-    name <- conid
-    void $ manyTill (fmap fst anyToken) $ lookAhead eqSym
-    eqSym
     void $ manyTill (fmap fst anyToken) $ lookAhead nextIndent
     pure name
-  pure $ TypeModelD $ TypeModel name span
+  pure $ TypeModelD $ TypeModel name vars span
+
+parseEmptyType :: Parser (Decl SourceSpan)
+parseEmptyType = do
+  opening
+  void $ matchTokenStr Reservedid "type"
+  name <- conid
+  vars <- many varid
+  lookAhead nextIndent
+  pure $ EmptyTypeD $ EmptyType name vars
 
 parseOther :: Parser (Decl SourceSpan)
 parseOther = do
@@ -163,8 +174,12 @@ data Decl a
   | TypeModelD (TypeModel a)
   | Import a
   | Other a
+  | EmptyTypeD EmptyType
   | Opening
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+data EmptyType = EmptyType String [String]
+  deriving (Eq, Ord, Show)
 
 data TypeSig a = TypeSig String a
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
@@ -175,12 +190,13 @@ data Law a = Law String a a
 data FunModel a = FunModel String a
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-data TypeModel a = TypeModel String a
+data TypeModel a = TypeModel String [String] a
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 parseDecl :: Parser (Decl SourceSpan)
 parseDecl = asum
-  [ try parseTypeSig
+  [ try parseEmptyType
+  , try parseTypeSig
   , try parseOpening
   , try parseTypeSig
   , try parseFunModel
@@ -194,14 +210,17 @@ data StuffMap a = StuffMap
   { smHeader     :: [a]
   , smLaws       :: [Law a]
   , smFunModels  :: [FunModel a]
-  , smTypeModels :: [TypeModel a]
+  , smTypeModels :: M.Map String (TypeModel a)
   , smOther      :: [Decl a]
   , smSigs       :: [TypeSig a]
+  , smEmptyTypes :: [EmptyType]
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
+-- dumpEmptyAndTypeModels :: [String] ->
+
 instance Semigroup (StuffMap a) where
-  StuffMap a1 b1 c1 d1 e1 f1 <> StuffMap a2 b2 c2 d2 e2 f2 =
+  StuffMap a1 b1 c1 d1 e1 f1 g1 <> StuffMap a2 b2 c2 d2 e2 f2 g2 =
     StuffMap
       (a1 <> a2)
       (b1 <> b2)
@@ -209,17 +228,24 @@ instance Semigroup (StuffMap a) where
       (d1 <> d2)
       (e1 <> e2)
       (f1 <> f2)
+      (g1 <> g2)
 
 instance Monoid (StuffMap a) where
-  mempty = StuffMap mempty mempty mempty mempty mempty mempty
+  mempty = StuffMap mempty mempty mempty mempty mempty mempty mempty
 
 buildStuffMap :: [Decl a] -> StuffMap a
 buildStuffMap = foldMap $ \case
-  LawD       t   -> StuffMap mempty [t] mempty mempty mempty mempty
-  FunModelD  t   -> StuffMap mempty mempty [t] mempty mempty mempty
-  TypeModelD t   -> StuffMap mempty mempty mempty [t] mempty mempty
-  d@(TypeSigD t) -> StuffMap mempty mempty mempty mempty [d] [t]
-  t              -> StuffMap mempty mempty mempty mempty [t] mempty
+  LawD       t
+    -> StuffMap mempty [t] mempty mempty mempty mempty mempty
+  FunModelD  t
+    -> StuffMap mempty mempty [t] mempty mempty mempty mempty
+  TypeModelD (t@(TypeModel n _ _))
+    -> StuffMap mempty mempty mempty (M.singleton n t) mempty mempty mempty
+  d@(TypeSigD t)
+    -> StuffMap mempty mempty mempty mempty [d] [t] mempty
+  EmptyTypeD n
+    -> StuffMap mempty mempty mempty mempty mempty mempty [n]
+  t -> StuffMap mempty mempty mempty mempty [t] mempty mempty
 
 
 addImport :: a -> StuffMap a -> StuffMap a
@@ -251,6 +277,72 @@ parseAndSubst str
   . parse (many parseDecl) "test-file"
   $ insertIndents =<< lexerPass1 str
 
+dumpModeledBy :: TypeModel String -> String
+dumpModeledBy (TypeModel nm vars res) = unlines
+  [ mconcat
+    [ "type "
+    , mkHead nm vars
+    , " = "
+    , "ModeledBy ("
+    , sanitizeSpan res
+    , ")"
+    ]
+  , mconcat
+    [ "{-# WARNING "
+    , nm
+    , " \"This is a placeholder type.\" "
+    , "#-}"
+    ]
+  ]
+
+dumpEmptyType :: String -> [String] -> String
+dumpEmptyType nm vars = unlines
+  [ mconcat
+      [ "data "
+      , mkHead nm vars
+      , " = "
+      , nm
+      ]
+  , "  deriving (Eq, Show, Generic)"
+  , mconcat
+    [ "{-# WARNING "
+    , nm
+    , "\"This is a placeholder type.\""
+    , " #-}"
+    ]
+  , mconcat
+      [ "instance EqProp ("
+      , mkHead nm vars
+      , ") where"
+      ]
+  , "  (=-=) = (===)"
+  , mconcat
+      [ "instance Arbitrary ("
+      , mkHead nm vars
+      , ") where"
+      ]
+  , mconcat
+      [ "  arbitrary = pure "
+      , nm
+      ]
+  ]
+
+dumpEmptyAndModeledType
+    :: M.Map String (TypeModel String)
+    -> EmptyType
+    -> String
+dumpEmptyAndModeledType m (EmptyType nm vars) =
+  case M.lookup nm m of
+    Just tm -> dumpModeledBy tm
+    Nothing -> dumpEmptyType nm vars
+
+mkHead :: String -> [String] -> String
+mkHead nm vars = mconcat
+  [ nm
+  , " "
+  , unwords vars
+  ]
+
 
 
 passThrough :: Decl String -> String
@@ -261,12 +353,14 @@ passThrough TypeModelD{}               = mempty
 passThrough (Other m)                  = m
 passThrough Opening                    = mempty
 passThrough (Import m)                 = "import " ++ m ++ "\n"
+passThrough EmptyTypeD{}               = mempty
 
 
 dumpStuffMap :: StuffMap String -> String
 dumpStuffMap sm = unlines
   [ unlines $ smHeader sm
   , foldMap passThrough $ smOther sm
+  , foldMap (dumpEmptyAndModeledType (smTypeModels sm)) $ smEmptyTypes sm
   , "pure []"
   , ""
   , "---------- MODELS BEGIN HERE ----------"
@@ -290,17 +384,23 @@ dumpLaws laws = unlines
 trimTrailingSpace :: String -> String
 trimTrailingSpace = dropEndWhile isSpace
 
+
+
 dumpLaw :: Law String -> String
 dumpLaw (Law name lhs rhs) =
   mconcat
     [ "law "
     , show name
     , " $ ("
-    , trimTrailingSpace $ removeComments lhs
+    , sanitizeSpan lhs
     , ") == ("
-    , trimTrailingSpace $ removeComments rhs
+    , sanitizeSpan rhs
     , ")\n"
     ]
+
+sanitizeSpan :: String -> String
+sanitizeSpan = trimTrailingSpace . removeComments
+
 
 insertIndents :: PosToken -> [PosToken]
 insertIndents a@(Open 1, _) = [a, (Indent 1, (Pos 0 0 0, ""))]
@@ -322,9 +422,11 @@ app :: [Decl String] -> String
 app
   = dumpStuffMap
   . addHeader "{-# LANGUAGE TemplateHaskell #-}"
+  . addHeader "{-# LANGUAGE DeriveGeneric #-}"
   . addHeader "{-# OPTIONS_GHC -fno-warn-unused-imports #-}"
   . addImport "Test.QuickCheck"
   . addImport "Test.QuickCheck.Checkers (Model (..), EqProp (..))"
+  . addImport "GHC.Generics (Generic)"
   . addImport "AlgebraCheckers (law)"
   . addImport "AlgebraCheckers.Tools (ModeledBy)"
   . addImport "AlgebraCheckers.TH (theoremsOf)"
