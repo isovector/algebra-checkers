@@ -55,20 +55,34 @@ deleteFunctionCall nm = everywhere $ mkT $ \case
   VarE x | x == nm -> VarE 'id
   x                -> x
 
+genModel :: Data a => [Name] -> a -> a
+genModel nms
+  = deleteFunctionCall 'model
+  . deleteFunctionCall 'unmodel
+  . replaceWithModelNames mkModelName nms
+
 
 modelFor :: [Name] -> Dec -> Q Dec
 modelFor _ (SigD name ty) = SigD (mkModelName name) <$> denotationType ty
 modelFor nms (FunD name cls)
   = pure
   . FunD (mkModelName name)
-  . deleteFunctionCall 'model
-  . deleteFunctionCall 'unmodel
-  $ replaceWithModelNames mkModelName nms cls
+  $ genModel nms cls
+modelFor nms (ValD name body decs)
+  = pure
+  $ ValD (everywhere (mkT mkModelName) name)
+         (genModel nms body)
+         (genModel nms decs)
 modelFor _ x = fail $ "not allowed in modelFor: " ++ render (ppr x)
 
 tycheckFor :: [Name] -> Dec -> Maybe Dec
 tycheckFor _ (SigD name ty) = pure $ SigD (mkTycheckName name) ty
-tycheckFor nms (FunD name cls) = pure $ FunD (mkTycheckName name) $ replaceWithModelNames mkTycheckName nms cls
+tycheckFor nms (ValD name body decs)
+  = pure $ ValD (everywhere (mkT mkTycheckName) name)
+                (replaceWithModelNames mkTycheckName nms body)
+                (replaceWithModelNames mkTycheckName nms decs)
+tycheckFor nms (FunD name cls)
+  = pure $ FunD (mkTycheckName name) $ replaceWithModelNames mkTycheckName nms cls
 tycheckFor _ _ = Nothing
 
 defines :: Dec -> Maybe Name

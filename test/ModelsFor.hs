@@ -17,7 +17,7 @@ pure []
 modelsFor =<< [d|
 
   foo :: Bar -> Int
-  foo x = model (upload_bar x) + 1
+  foo = model . upload_bar
 
   upload_bar :: Bar -> Bar
   upload_bar bar = unmodel $ model bar + 1
