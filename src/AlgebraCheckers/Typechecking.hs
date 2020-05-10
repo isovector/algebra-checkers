@@ -15,6 +15,7 @@ module AlgebraCheckers.Typechecking
   , typecheckExp
   ) where
 
+import Debug.Trace
 import           AlgebraCheckers.Unification (unboundVars, varsToQuantify)
 import           Control.Arrow (second)
 import           Control.Monad
@@ -28,6 +29,7 @@ import           Data.Word
 import           Language.Haskell.TH.Datatype (applySubstitution, resolveTypeSynonyms)
 import           Language.Haskell.TH.Syntax
 import           Language.Haskell.TH.Typecheck
+import           Language.Haskell.TH.Ppr (ppr)
 import           Test.QuickCheck.Checkers
 
 

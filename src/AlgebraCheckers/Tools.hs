@@ -8,6 +8,7 @@
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
 module AlgebraCheckers.Tools where
@@ -24,7 +25,8 @@ newtype WithSemigroup a = WithSemigroup a
 instance Semigroup (WithSemigroup a) where
   (<>) = undefined
 
-instance Model a b => Model (WithSemigroup a) b where
+instance Model a => Model (WithSemigroup a) where
+  type ModelOf (WithSemigroup a) = ModelOf a
   model (WithSemigroup a) = model a
 
 newtype WithMonoid a = WithMonoid a
@@ -35,7 +37,8 @@ newtype WithMonoid a = WithMonoid a
 instance Monoid (WithMonoid a) where
   mempty = undefined
 
-instance Model a b => Model (WithMonoid a) b where
+instance Model a => Model (WithMonoid a) where
+  type ModelOf (WithMonoid a) = ModelOf a
   model (WithMonoid a) = model a
 
 newtype WithGroup a = WithGroup a
@@ -47,7 +50,8 @@ newtype WithGroup a = WithGroup a
 instance Group (WithGroup a) where
   invert = undefined
 
-instance Model a b => Model (WithGroup a) b where
+instance Model a => Model (WithGroup a) where
+  type ModelOf (WithGroup a) = ModelOf a
   model (WithGroup a) = model a
 
 newtype WithOrd a = WithOrd a
@@ -57,7 +61,8 @@ newtype WithOrd a = WithOrd a
 instance Eq a => Ord (WithOrd a) where
   compare = undefined
 
-instance Model a b => Model (WithOrd a) b where
+instance Model a => Model (WithOrd a) where
+  type ModelOf (WithOrd a) = ModelOf a
   model (WithOrd a) = model a
 
 data Undecided = Undecided
@@ -66,7 +71,8 @@ data Undecided = Undecided
 
 instance Function a => Function (ModeledBy a)
 
-instance Model Undecided Undecided where
+instance Model Undecided where
+  type ModelOf Undecided = Undecided
   model = id
 instance Arbitrary Undecided where
   arbitrary = pure Undecided
@@ -88,7 +94,8 @@ instance Arbitrary a => Arbitrary (ModeledBy a) where
 
 instance EqProp a => EqProp (ModeledBy a)
 
-instance Model (ModeledBy a) a where
+instance Model (ModeledBy a) where
+  type ModelOf (ModeledBy a) = a
   model = modeledBy
 
 instance CoArbitrary a => CoArbitrary (ModeledBy a) where
