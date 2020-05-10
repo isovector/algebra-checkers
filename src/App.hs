@@ -45,13 +45,13 @@ app
   = dumpStuffMap
   . addHeader "{-# LANGUAGE TemplateHaskell #-}"
   . addHeader "{-# LANGUAGE DeriveGeneric #-}"
+  . addHeader "{-# LANGUAGE TypeFamilies #-}"
   . addHeader "{-# OPTIONS_GHC -fno-warn-unused-imports #-}"
   . addImport "Test.QuickCheck"
   . addImport "Test.QuickCheck.Checkers (Model (..), EqProp (..))"
   . addImport "GHC.Generics (Generic)"
-  . addImport "AlgebraCheckers (law)"
+  . addImport "AlgebraCheckers (theoremsOf, law)"
   . addImport "AlgebraCheckers.Tools (ModeledBy)"
-  . addImport "AlgebraCheckers.TH (theoremsOf)"
   . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel)"
   . buildStuffMap
 

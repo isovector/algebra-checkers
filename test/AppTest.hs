@@ -1,11 +1,11 @@
-{-# LANGUAGE TypeFamilies              #-}
 {-# OPTIONS_GHC -F -pgmF algebra-check #-}
-{-# OPTIONS_GHC -ddump-splices         #-}
 
-module App where
+module AppTest where
 
 type Bar
 μ Bar = Int
+
+type EmptyType
 
 
 foo :: Bar -> Int

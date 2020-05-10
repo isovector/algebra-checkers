@@ -30,18 +30,26 @@ instance Arbitrary (#{mkHead nm vars}) where
 
 
 dumpStuffMap :: StuffMap String -> String
-dumpStuffMap sm = [i|
-#{unlines $ smHeader sm}
-#{foldMap passThrough $ smOther sm}
-#{foldMap (dumpEmptyAndModeledType (smTypeModels sm)) $ smEmptyTypes sm}
-pure []
+dumpStuffMap sm = unlines
+  [ unlines $ smHeader sm
+  , foldMap passThrough $ smOther sm
+  , foldMap (dumpEmptyAndModeledType (smTypeModels sm)) $ smEmptyTypes sm
+  , emptySplice
+  , dumpModels sm
+  , dumpLaws $ smLaws sm
+  ]
 
+
+emptySplice :: String
+emptySplice = "pure []"
+
+
+dumpModels  :: StuffMap String -> String
+dumpModels sm = [i|
 ---------- MODELS BEGIN HERE ----------
 modelsFor =<< [d|
 #{foldMap (mappend "  " . passThrough) $ fmap FunModelD (smFunModels sm) <> fmap TypeSigD (smSigs sm)}
   #{endQuote}
-
-#{dumpLaws $ smLaws sm}
 |]
 
 

@@ -64,3 +64,20 @@ library:
     - AlgebraCheckers.Types
     - AlgebraCheckers.Unification
 
+tests:
+  polysemy-test:
+    main:                Main.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    build-tools:
+    - algebra-check
+    build-depends:
+    - algebra-checkers
+    dependencies:
+    - algebra-checkers
+    - hspec
+    - QuickCheck
+
