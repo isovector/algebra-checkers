@@ -110,10 +110,16 @@ parseLaws _ = error "you must call parseLaws with a do block"
 theoremsOf :: ExpQ -> ExpQ
 theoremsOf = (theoremsOfImpl =<<)
 
-theoremsOfImpl :: Exp -> ExpQ
-theoremsOfImpl z = do
+constructLaws :: Exp -> Q [Theorem]
+constructLaws z = do
   md <- thisModule
-  let ths = theorize md $ parseLaws z
+  let parsed = parseLaws z
+  let unknown = join $ do
+        Law _ a b <- parsed
+        pure $ unknownVars a ++ unknownVars b
+  unless (null unknown) $
+    fail $ "Unknown variables: " ++ show unknown
+  let ths = theorize md $ parsed
   putQ ths
   let (theorems, problems) = partition (sanityCheck md) ths
       contradicts = filter (maybe False isContradiction . sanityCheck' md) problems
@@ -123,7 +129,12 @@ theoremsOfImpl z = do
     printStuff md "Theorems"       theorems
     printStuff md "Dodgy Theorems" dodgy
     printStuff md "Contradictions" contradicts
-  tests <- buildPropTests $ theorems ++ dodgy ++ contradicts
+  pure $ theorems ++ dodgy ++ contradicts
+
+theoremsOfImpl :: Exp -> ExpQ
+theoremsOfImpl z = do
+  laws <- constructLaws z
+  tests <- buildPropTests laws
   listE $ fmap pure tests
 
 printStuff :: Module -> String -> [Theorem] -> IO ()
