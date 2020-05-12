@@ -69,14 +69,26 @@ genModel nms
   . replaceWithModelNames mkModelName nms
 
 
+remapModelTypes :: Data a => a -> Q a
+remapModelTypes = everywhereM $ mkM
+  (\case
+    SigP p ty -> SigP p <$> denotationType ty
+    t         -> pure t) `extM`
+  (\case
+    SigE e ty     -> SigE e <$> denotationType ty
+    AppTypeE e ty -> AppTypeE e <$> denotationType ty
+    t             -> pure t)
+
+
+
 modelFor :: [Name] -> Dec -> Q Dec
 modelFor _ (SigD name ty) = SigD (mkModelName name) <$> denotationType ty
 modelFor nms (FunD name cls)
-  = pure
+  = remapModelTypes
   . FunD (mkModelName name)
   $ genModel nms cls
 modelFor nms (ValD name body decs)
-  = pure
+  = remapModelTypes
   $ ValD (everywhere (mkT mkModelName) name)
          (genModel nms body)
          (genModel nms decs)

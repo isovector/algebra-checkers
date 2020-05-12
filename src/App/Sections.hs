@@ -61,20 +61,21 @@ dumpLaws [] = mempty
 dumpLaws laws = [i|
 ---------- LAWS BEGIN HERE ----------
 
-(theoremsOf [e| do
+([e| do
 #{foldMap dumpLaw laws}
-  #{endQuote} >>= putQ) >> pure []
+  #{endQuote} >>= constructLaws >>= putQ) >> pure []
 
 prop_laws :: [Property]
 prop_laws = fmap snd $ $(do
   Just decs <- getQ
-  pure decs)
+  emitProperties decs)
 
 prop_model_laws :: [(String, Property)]
 prop_model_laws = $(do
   Just decs <- getQ
   Just nms <- getQ
-  pure $ sloppyReplaceWithModelNames mkModelName nms decs
+  decs' <- remapModelTypes $ sloppyReplaceWithModelNames mkModelName nms decs
+  emitProperties decs'
   )
 |]
 

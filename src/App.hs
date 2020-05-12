@@ -52,7 +52,8 @@ app
   . addImport "GHC.Generics (Generic)"
   . addImport "AlgebraCheckers (theoremsOf, law)"
   . addImport "AlgebraCheckers.Tools (ModeledBy)"
-  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel, mkModelName, sloppyReplaceWithModelNames)"
+  . addImport "AlgebraCheckers.TH (constructLaws, emitProperties)"
+  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel, mkModelName, sloppyReplaceWithModelNames, remapModelTypes)"
   . addImport "Language.Haskell.TH.Syntax (putQ, getQ, reportError)"
   . buildStuffMap
 

@@ -7,11 +7,11 @@
 
 module AlgebraCheckers.TH where
 
+-- import Debug.Trace
 import qualified Data.Map as M
 import AlgebraCheckers.Homos
 import AlgebraCheckers.Patterns
 import AlgebraCheckers.Ppr
-import AlgebraCheckers.Suggestions
 import AlgebraCheckers.Theorems
 import AlgebraCheckers.Unification
 import AlgebraCheckers.Typechecking
@@ -21,7 +21,7 @@ import Data.Bool
 import Data.List (partition)
 import Data.Traversable
 import Language.Haskell.TH hiding (ppr, Arity)
-import Language.Haskell.TH.Syntax (lift, Module, putQ, getQ)
+import Language.Haskell.TH.Syntax (lift, Module)
 import Prelude hiding (exp)
 import Test.QuickCheck hiding (collect)
 import Test.QuickCheck.Checkers ((=-=))
@@ -46,9 +46,14 @@ propTestEq :: Theorem -> ExpQ
 propTestEq t@(Law _ exp1 exp2) = do
   md <- thisModule
   eq2exp <- [e| $(pure exp1) `eq2` $(pure exp2) |]
+  -- traceM "starting mono"
+  -- traceM $ render $ ppr eq2exp
   AppT _ z <- fmap monomorphize $ typecheckExp eq2exp
+  -- traceM "stopping mono"
   eqexp <- [e| ($(pure exp1) :: $(pure z)) =-= ($(pure exp2) :: $(pure z)) |]
+  -- traceM "starting infer"
   inferred <- fmap M.toList $ inferUnboundVars eqexp
+  -- traceM "stopping infer"
   pats <-
     for inferred $ \(var, ty) -> do
       let pat = mkPattern var ty
@@ -57,20 +62,16 @@ propTestEq t@(Law _ exp1 exp2) = do
         False -> pat
 
   [e|
-    ($(lift $ render $ showTheorem False md t), counterexample $(lift $ render $ showTheorem False md t) $
-      property $(lamE (fmap pure pats) [e|
-       $(pure eqexp)
+    ($(lift $ render $ showTheorem False md t)
+      , counterexample $(lift $ render $ showTheorem False md t) $
+          property $(lamE (fmap pure pats) [e|
+          $(pure eqexp)
       |]))
     |]
 
 
 buildPropTests :: [Theorem] -> Q [Exp]
 buildPropTests ts = do
-  let unknown = join $ do
-        Law _ a b <- ts
-        pure $ unknownVars a ++ unknownVars b
-  unless (null unknown) $
-    fail $ "Unknown variables: " ++ show unknown
   traverse propTestEq ts
 
 
@@ -95,7 +96,6 @@ testModelImpl :: Exp -> ExpQ
 testModelImpl e = do
   m <- thisModule
   let theorems = theorize m $ parseLaws e
-  putQ theorems
   tests <- buildPropTests theorems
   listE $ fmap pure tests
 
@@ -120,7 +120,6 @@ constructLaws z = do
   unless (null unknown) $
     fail $ "Unknown variables: " ++ show unknown
   let ths = theorize md $ parsed
-  putQ ths
   let (theorems, problems) = partition (sanityCheck md) ths
       contradicts = filter (maybe False isContradiction . sanityCheck' md) problems
       dodgy       = filter (maybe False isDodgy . sanityCheck' md) problems
@@ -130,6 +129,11 @@ constructLaws z = do
     printStuff md "Dodgy Theorems" dodgy
     printStuff md "Contradictions" contradicts
   pure $ theorems ++ dodgy ++ contradicts
+
+emitProperties :: [Theorem] -> ExpQ
+emitProperties laws = do
+  tests <- buildPropTests laws
+  listE $ fmap pure tests
 
 theoremsOfImpl :: Exp -> ExpQ
 theoremsOfImpl z = do
@@ -152,23 +156,4 @@ collect (NotDodgyDef exp1 exp2)    = [Law LawNotDodgy exp1 exp2]
 collect (HomoDef ty bndr expr)     = makeHomo ty (knownHomos ty) bndr expr
 collect x = error $ show x
   -- "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
-
-suggestions :: DecsQ
-suggestions = do
-  Just theorems <- getQ @[Theorem]
-  md <- thisModule
-  sgs <- suggest md theorems
-  runIO $ do
-    putStrLn $ unlines $ fmap (render . pprSuggestion) sgs
-
-  pure []
-
-suggestionsFor :: [Name] -> DecsQ
-suggestionsFor surface = do
-  sgs <- suggestFor surface
-  runIO $ do
-    putStrLn $ unlines $ fmap (render . pprSuggestion) sgs
-
-  pure []
-
 

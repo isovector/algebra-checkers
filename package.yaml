@@ -54,15 +54,15 @@ executables:
 
 library:
   source-dirs: src
-  other-modules:
-    - AlgebraCheckers.Homos
-    - AlgebraCheckers.Patterns
-    - AlgebraCheckers.Ppr
-    - AlgebraCheckers.Suggestions
-    - AlgebraCheckers.Theorems
-    - AlgebraCheckers.TH
-    - AlgebraCheckers.Types
-    - AlgebraCheckers.Unification
+  # other-modules:
+  #   - AlgebraCheckers.Homos
+  #   - AlgebraCheckers.Patterns
+  #   - AlgebraCheckers.Ppr
+  #   - AlgebraCheckers.Suggestions
+  #   - AlgebraCheckers.Theorems
+  #   - AlgebraCheckers.TH
+  #   - AlgebraCheckers.Types
+  #   - AlgebraCheckers.Unification
 
 tests:
   polysemy-test:
@@ -74,7 +74,7 @@ tests:
     - -with-rtsopts=-N
     build-tools:
     - algebra-check
-    build-depends:
+    build-tool-depends:
     - algebra-checkers
     dependencies:
     - algebra-checkers
