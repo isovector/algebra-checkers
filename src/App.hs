@@ -50,10 +50,11 @@ app
   . addImport "Test.QuickCheck"
   . addImport "Test.QuickCheck.Checkers (Model (..), EqProp (..))"
   . addImport "GHC.Generics (Generic)"
+  . addImport "Data.Maybe (fromMaybe)"
   . addImport "AlgebraCheckers (theoremsOf, law)"
   . addImport "AlgebraCheckers.Tools (ModeledBy)"
   . addImport "AlgebraCheckers.TH (constructLaws, emitProperties)"
-  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel, mkModelName, sloppyReplaceWithModelNames, remapModelTypes)"
+  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel, mkModelName, sloppyReplaceWithModelNames, remapModelTypes, constructTTs)"
   . addImport "Language.Haskell.TH.Syntax (putQ, getQ, reportError)"
   . buildStuffMap
 

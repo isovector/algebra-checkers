@@ -2,6 +2,7 @@ resolver: lts-14.0
 
 packages:
 - .
+- ../th-tc
 # - ../th-instance-reification
 
 extra-deps:
@@ -10,6 +11,6 @@ extra-deps:
 - list-extras-0.4.1.4
 # - checkers-0.5.5
 - ../checkers
-- th-tc-0.2.1.0
+# - th-tc-0.2.1.0
 
 allow-newer: true

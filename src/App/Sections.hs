@@ -38,9 +38,27 @@ dumpStuffMap sm = unlines
   , foldMap passThrough $ smOther sm
   , foldMap (dumpEmptyAndModeledType (smTypeModels sm)) $ smEmptyTypes sm
   , emptySplice
+  , dumpTypeTemplates $ fmap snd $ M.toList $ smTypeModels sm
   , dumpModels sm
   , dumpLaws $ smLaws sm
   ]
+
+
+dumpTypeTemplates :: [TypeModel String] -> String
+dumpTypeTemplates tts = [i|
+---------- TYPE MODELS BEGIN HERE ----------
+([d|
+#{foldMap dumpTypeModel tts}
+  #{endQuote} >>= \\x -> do
+    let tts = constructTTs x
+    putQ tts
+    ) >> pure []
+|]
+
+dumpTypeModel :: TypeModel String -> String
+dumpTypeModel (TypeModel n vars res)  = [i|
+  type #{n} #{intercalate " " vars} = #{sanitizeSpan res}
+  |]
 
 
 emptySplice :: String
@@ -50,9 +68,12 @@ emptySplice = "pure []"
 dumpModels  :: StuffMap String -> String
 dumpModels sm = [i|
 ---------- MODELS BEGIN HERE ----------
-modelsFor =<< [d|
-#{foldMap (mappend "  " . passThrough) $ fmap FunModelD (smFunModels sm) <> fmap TypeSigD (smSigs sm)}
-  #{endQuote}
+( do
+  tts <- fmap (fromMaybe mempty) getQ
+  x <- [d|
+#{foldMap (mappend "    " . passThrough) $ fmap FunModelD (smFunModels sm) <> fmap TypeSigD (smSigs sm)}
+    #{endQuote}
+  modelsFor tts x)
 |]
 
 
@@ -72,9 +93,10 @@ prop_laws = fmap snd $ $(do
 
 prop_model_laws :: [(String, Property)]
 prop_model_laws = $(do
+  tts <- fmap (fromMaybe mempty) getQ
   Just decs <- getQ
   Just nms <- getQ
-  decs' <- remapModelTypes $ sloppyReplaceWithModelNames mkModelName nms decs
+  decs' <- remapModelTypes tts $ sloppyReplaceWithModelNames mkModelName nms decs
   emitProperties decs'
   )
 |]

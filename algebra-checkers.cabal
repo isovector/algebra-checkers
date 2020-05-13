@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 44506f4f7c686e4cc597f35a84525099cf7038d8c3702cd63adc39ead26ab9e2
+-- hash: 0e43c25b636d32e300bc2ff3b471cb07bf71c85c0ad8d6978c8b605995c84225
 
 name:           algebra-checkers
 version:        0.1.0.0
@@ -30,9 +30,17 @@ source-repository head
 library
   exposed-modules:
       AlgebraCheckers
+      AlgebraCheckers.Homos
       AlgebraCheckers.Modeling
+      AlgebraCheckers.Patterns
+      AlgebraCheckers.Ppr
+      AlgebraCheckers.Suggestions
+      AlgebraCheckers.TH
+      AlgebraCheckers.Theorems
       AlgebraCheckers.Tools
       AlgebraCheckers.Typechecking
+      AlgebraCheckers.Types
+      AlgebraCheckers.Unification
       AlgebraCheckers.Utils
       App
       App.Cleaning
@@ -40,14 +48,7 @@ library
       App.Sections
       App.Types
   other-modules:
-      AlgebraCheckers.Homos
-      AlgebraCheckers.Patterns
-      AlgebraCheckers.Ppr
-      AlgebraCheckers.Suggestions
-      AlgebraCheckers.Theorems
-      AlgebraCheckers.TH
-      AlgebraCheckers.Types
-      AlgebraCheckers.Unification
+      Paths_algebra_checkers
   hs-source-dirs:
       src
   ghc-options: -Wall

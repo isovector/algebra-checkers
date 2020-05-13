@@ -25,13 +25,6 @@ packages:
       sha256: 3887778ba91ac11e94300a82ce0898d9ce80dadcde7994676f3e66e7aee13bb7
   original:
     hackage: list-extras-0.4.1.4
-- completed:
-    hackage: th-tc-0.2.1.0@sha256:ccef59f802effbd2366c5e1e040bd98dc47128de80311a45980acbc747ec74a2,893
-    pantry-tree:
-      size: 226
-      sha256: 5cbe0c0444a075235247f0f819e531d4a6925401bca97d4dff0589e2c3f93ef3
-  original:
-    hackage: th-tc-0.2.1.0
 snapshots:
 - completed:
     size: 523443
