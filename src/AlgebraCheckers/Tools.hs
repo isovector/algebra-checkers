@@ -104,3 +104,6 @@ instance CoArbitrary a => CoArbitrary (ModeledBy a) where
 instance {-# OVERLAPPING #-} Show (ModeledBy (a -> b)) where
   show _ = "<fun>"
 
+domain :: (Enum a, Bounded a) => [a]
+domain = enumFromTo minBound maxBound
+
