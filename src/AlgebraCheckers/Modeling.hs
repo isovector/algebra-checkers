@@ -34,7 +34,7 @@ replaceTT :: Data a => M.Map Name TypeTemplate -> a -> a
 replaceTT tts = everywhere $ mkT $ \case
   ConT (sloppy -> n) | Just tt <- M.lookup n tts ->
     case ttArity tt of
-      0 -> ttType tt
+      0 -> replaceTT tts $ ttType tt
       _ -> UInfixT (LitT (NumTyLit $ ttArity tt - 1)) n (TupleT 0)
   AppT (UInfixT (LitT (NumTyLit 0)) n args) arg | Just tt <- M.lookup n tts ->
     let replacement
@@ -43,7 +43,7 @@ replaceTT tts = everywhere $ mkT $ \case
           . reverse
           . unravel
           $ AppT args arg
-     in rebindTyVars replacement $ ttType tt
+     in replaceTT tts $ rebindTyVars replacement $ ttType tt
   AppT (UInfixT (LitT (NumTyLit arity)) n args) arg ->
     UInfixT (LitT (NumTyLit $ arity - 1)) n (AppT args arg)
   t -> t
@@ -55,8 +55,13 @@ constructTTs ds =
 
 mkTypeTemplate :: Dec -> Maybe TypeTemplate
 mkTypeTemplate (TySynD n args res)
-  = Just $ TypeTemplate (sloppy n) (fromIntegral $ length args) (fmap getTVName args) res
+  = Just $ TypeTemplate (sloppy n) (fromIntegral $ length args) (fmap getTVName args) $ sloppyTypes res
 mkTypeTemplate _ = Nothing
+
+sloppyTypes :: Data a => a -> a
+sloppyTypes = everywhere $ mkT $ \case
+  ConT n -> ConT $ sloppy n
+  t -> t
 
 getTVName :: TyVarBndr -> Name
 getTVName (PlainTV n)    = n
@@ -172,7 +177,7 @@ modelsFor tts decs = do
   -- tts <- fmap (fromMaybe mempty) getQ
   -- Just tts <- getQ
   let nms = mapMaybe defines decs
-  z <- mappend <$> traverse (modelFor tts nms) decs <*> pure (mapMaybe (tycheckFor nms) decs)
+  z <- traverse (modelFor tts nms) decs -- <*> pure (mapMaybe (tycheckFor nms) decs)
   putQ nms
   pure z
 

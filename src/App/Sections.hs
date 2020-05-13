@@ -71,7 +71,7 @@ dumpModels sm = [i|
 ( do
   tts <- fmap (fromMaybe mempty) getQ
   x <- [d|
-#{foldMap (mappend "    " . passThrough) $ fmap FunModelD (smFunModels sm) <> fmap TypeSigD (smSigs sm)}
+#{foldMap (unlines . fmap (mappend "    ") . lines . passThrough) $ fmap FunModelD (smFunModels sm) <> fmap TypeSigD (smSigs sm)}
     #{endQuote}
   modelsFor tts x)
 |]
