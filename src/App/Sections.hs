@@ -1,5 +1,6 @@
 {-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 module App.Sections where
 
@@ -38,6 +39,7 @@ dumpStuffMap sm = unlines
   , foldMap passThrough $ smOther sm
   , foldMap (dumpEmptyAndModeledType (smTypeModels sm)) $ smEmptyTypes sm
   , emptySplice
+  , dumpDefaults $ smDefaults sm
   , dumpTypeTemplates $ fmap snd $ M.toList $ smTypeModels sm
   , dumpModels sm
   , dumpLaws $ smLaws sm
@@ -89,16 +91,28 @@ dumpLaws laws = [i|
 prop_laws :: [Property]
 prop_laws = fmap snd $ $(do
   Just decs <- getQ
-  emitProperties decs)
+  Just defs <- getQ
+  emitProperties defs decs)
 
 prop_model_laws :: [(String, Property)]
 prop_model_laws = $(do
   tts <- fmap (fromMaybe mempty) getQ
   Just decs <- getQ
   Just nms <- getQ
+  Just defs <- getQ
   decs' <- remapModelTypes tts $ sloppyReplaceWithModelNames mkModelName nms decs
-  emitProperties decs'
+  emitProperties defs decs'
   )
+|]
+
+
+dumpDefaults :: M.Map String String -> String
+dumpDefaults (M.toList -> ss) = [i|
+( do
+  tys <- sequenceA [#{intercalate ", " $ fmap (\z -> "[t|" ++ sanitizeSpan (snd z) ++ endQuote) ss}]
+  let defs = M.fromList $ zip [#{intercalate ", " $ fmap (\x -> "mkName \"" ++ fst x ++ "\"") ss}] tys
+  putQ defs
+  ) >> pure []
 |]
 
 
@@ -129,6 +143,7 @@ passThrough (Other m)                  = m
 passThrough Opening                    = mempty
 passThrough (Import m)                 = "import " ++ m ++ "\n"
 passThrough EmptyTypeD{}               = mempty
+passThrough Default{}                  = mempty
 
 
 dumpEmptyAndModeledType

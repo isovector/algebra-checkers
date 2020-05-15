@@ -15,8 +15,8 @@ module AlgebraCheckers.Typechecking
   , typecheckExp
   ) where
 
-import Debug.Trace
 import           AlgebraCheckers.Unification (unboundVars, varsToQuantify)
+import           AlgebraCheckers.Utils
 import           Control.Arrow (second)
 import           Control.Monad
 import           Data.Foldable
@@ -26,10 +26,11 @@ import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Traversable
 import           Data.Word
+import           Debug.Trace
 import           Language.Haskell.TH.Datatype (applySubstitution, resolveTypeSynonyms)
+import           Language.Haskell.TH.Ppr (ppr)
 import           Language.Haskell.TH.Syntax
 import           Language.Haskell.TH.Typecheck
-import           Language.Haskell.TH.Ppr (ppr)
 import           Test.QuickCheck.Checkers
 
 
@@ -39,16 +40,19 @@ instance EqProp Word8 where
   (=-=) = eq
 
 
-monomorphize :: Type -> Type
-monomorphize = everywhere $ mkT $ \case
-  VarT _ -> ConT ''Word8
+monomorphize :: M.Map Name Type -> Type -> Type
+monomorphize defs = everywhere $ mkT $ \case
+  VarT t ->
+    case M.lookup (sloppy t) defs of
+      Just t' -> t'
+      Nothing -> ConT ''Word8
   t -> t
 
 
 instantiate' :: MonadTc m => Type -> m Type
 instantiate' (ForallT tys _ t) = do
   let names = fmap bndrName tys
-  tys' <- for names $ \name -> (name, ) <$> freshTy
+  tys' <- for names $ \name -> (name, ) <$> freshNamedTy (nameBase name)
   instantiate' $ applySubstitution (M.fromList tys') t
 instantiate' (a :-> b) = (a :->) <$> instantiate' b
 instantiate' t = pure t
@@ -108,6 +112,8 @@ typecheck scope = (substZonked =<<) . \case
 freshTy :: MonadTc m => m Type
 freshTy = VarT <$> freshUnifTV
 
+freshNamedTy :: MonadTc m => String -> m Type
+freshNamedTy str = VarT <$> freshNamedUnifTV str
 
 
 bndrName :: TyVarBndr -> Name

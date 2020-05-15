@@ -134,6 +134,15 @@ parseEmptyType = do
   lookAhead nextIndent
   pure $ EmptyTypeD $ EmptyType name vars
 
+parseDefault :: Parser (Decl SourceSpan)
+parseDefault = do
+  opening
+  void $ matchTokenStr Reservedid "default"
+  name <- varid
+  eqSym
+  (span, _) <- spanning $ void $ manyTill (fmap fst anyToken) $ lookAhead nextIndent
+  pure $ Default name span
+
 parseOther :: Parser (Decl SourceSpan)
 parseOther = do
   openingButNotEof
@@ -148,6 +157,7 @@ parseOpening = do
 parseDecl :: Parser (Decl SourceSpan)
 parseDecl = asum
   [ try parseEmptyType
+  , try parseDefault
   , try parseTypeSig
   , try parseOpening
   , try parseTypeSig

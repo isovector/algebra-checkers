@@ -12,16 +12,18 @@ import qualified Data.Map as M
 buildStuffMap :: [Decl a] -> StuffMap a
 buildStuffMap = foldMap $ \case
   LawD       t
-    -> StuffMap mempty [t] mempty mempty mempty mempty mempty
+    -> StuffMap mempty [t] mempty mempty mempty mempty mempty mempty
   FunModelD  t
-    -> StuffMap mempty mempty [t] mempty mempty mempty mempty
+    -> StuffMap mempty mempty [t] mempty mempty mempty mempty mempty
   TypeModelD (t@(TypeModel n _ _))
-    -> StuffMap mempty mempty mempty (M.singleton n t) mempty mempty mempty
+    -> StuffMap mempty mempty mempty (M.singleton n t) mempty mempty mempty mempty
   d@(TypeSigD t)
-    -> StuffMap mempty mempty mempty mempty [d] [t] mempty
+    -> StuffMap mempty mempty mempty mempty [d] [t] mempty mempty
   EmptyTypeD n
-    -> StuffMap mempty mempty mempty mempty mempty mempty [n]
-  t -> StuffMap mempty mempty mempty mempty [t] mempty mempty
+    -> StuffMap mempty mempty mempty mempty mempty mempty [n] mempty
+  Default n a
+    -> StuffMap mempty mempty mempty mempty mempty mempty mempty $ M.singleton n a
+  t -> StuffMap mempty mempty mempty mempty [t] mempty mempty mempty
 
 
 addImport :: a -> StuffMap a -> StuffMap a
@@ -51,11 +53,13 @@ app
   . addImport "Test.QuickCheck.Checkers (Model (..), EqProp (..))"
   . addImport "GHC.Generics (Generic)"
   . addImport "Data.Maybe (fromMaybe)"
-  . addImport "AlgebraCheckers (theoremsOf, law)"
+  . addImport "qualified Data.Map as M"
+  . addImport "Data.Traversable (sequenceA)"
+  . addImport "AlgebraCheckers (law)"
   . addImport "AlgebraCheckers.Tools (ModeledBy)"
   . addImport "AlgebraCheckers.TH (constructLaws, emitProperties)"
   . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel, mkModelName, sloppyReplaceWithModelNames, remapModelTypes, constructTTs)"
-  . addImport "Language.Haskell.TH.Syntax (putQ, getQ, reportError)"
+  . addImport "Language.Haskell.TH.Syntax (putQ, getQ, reportError, mkName)"
   . buildStuffMap
 
 

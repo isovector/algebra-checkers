@@ -9,6 +9,7 @@ import           AlgebraCheckers.Ppr
 import           AlgebraCheckers.Suggestions
 import           AlgebraCheckers.Typechecking
 import           AlgebraCheckers.Unification
+import           AlgebraCheckers.Utils
 import           Control.Arrow
 import           Data.Data
 import           Data.Generics.Aliases
@@ -26,9 +27,6 @@ data TypeTemplate = TypeTemplate
   , ttArgs  :: [Name]
   , ttType  :: Type
   } deriving (Eq, Ord, Show, Data)
-
-sloppy :: Name -> Name
-sloppy = mkName . nameBase
 
 replaceTT :: Data a => M.Map Name TypeTemplate -> a -> a
 replaceTT tts = everywhere $ mkT $ \case

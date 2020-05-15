@@ -1,10 +1,6 @@
 module AlgebraCheckers
   ( -- * Model Checking
-    testModel
-  , theoremsOf
-
-    -- * Modeling Tools
-  , law
+    law
   , homo
   , notDodgy
   ) where

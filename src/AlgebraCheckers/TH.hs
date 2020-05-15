@@ -34,21 +34,21 @@ showTheorem c md thm =
       showContradictoryTheorem c thm contradiction
     Nothing -> showSaneTheorem c thm
 
-mkPattern :: Name -> Type -> PatQ
-mkPattern nm ty = do
-  let mono = monomorphize ty
+mkPattern :: M.Map Name Type -> Name -> Type -> PatQ
+mkPattern defs nm ty = do
+  let mono = monomorphize defs ty
   case mono == ty of
     True  -> varP nm
     False -> sigP (varP nm) $ pure mono
 
 
-propTestEq :: Theorem -> ExpQ
-propTestEq t@(Law _ exp1 exp2) = do
+propTestEq :: M.Map Name Type -> Theorem -> ExpQ
+propTestEq defs t@(Law _ exp1 exp2) = do
   md <- thisModule
   eq2exp <- [e| $(pure exp1) `eq2` $(pure exp2) |]
   -- traceM "starting mono"
   -- traceM $ render $ ppr eq2exp
-  AppT _ z <- fmap monomorphize $ typecheckExp eq2exp
+  AppT _ z <- fmap (monomorphize defs) $ typecheckExp eq2exp
   -- traceM "stopping mono"
   eqexp <- [e| ($(pure exp1) :: $(pure z)) =-= ($(pure exp2) :: $(pure z)) |]
   -- traceM "starting infer"
@@ -56,10 +56,11 @@ propTestEq t@(Law _ exp1 exp2) = do
   -- traceM "stopping infer"
   pats <-
     for inferred $ \(var, ty) -> do
-      let pat = mkPattern var ty
-      isFunctionWithArity 1 ty >>= \case
-        True -> conP 'Fn [pat]
-        False -> pat
+      mkPattern defs var ty
+      -- let pat = mkPattern var ty
+      -- isFunctionWithArity 1 ty >>= \case
+      --   True -> conP 'Fn [pat]
+      --   False -> pat
 
   [e|
     ($(lift $ render $ showTheorem False md t)
@@ -70,45 +71,14 @@ propTestEq t@(Law _ exp1 exp2) = do
     |]
 
 
-buildPropTests :: [Theorem] -> Q [Exp]
-buildPropTests ts = do
-  traverse propTestEq ts
+buildPropTests :: M.Map Name Type -> [Theorem] -> Q [Exp]
+buildPropTests defs ts = do
+  traverse (propTestEq defs) ts
 
-
-------------------------------------------------------------------------------
--- | Generate QuickCheck property tests for the given model.
---
--- ==== __Examples__
---
--- @
---   lawTests :: ['Test.QuickCheck.Property']
---   lawTests = $('theoremsOf' [e| do
---
---   'AlgebraCheckers.law' "commutativity" $ a '+' b '==' b '+' a
---   'AlgebraCheckers.law' "identity" (a '+' 0 '==' a)
---
---   |])
--- @
-testModel :: ExpQ -> ExpQ
-testModel = (testModelImpl =<<)
-
-testModelImpl :: Exp -> ExpQ
-testModelImpl e = do
-  m <- thisModule
-  let theorems = theorize m $ parseLaws e
-  tests <- buildPropTests theorems
-  listE $ fmap pure tests
 
 parseLaws :: Exp -> [Law LawSort]
 parseLaws (DoE z) = concatMap collect z
 parseLaws _ = error "you must call parseLaws with a do block"
-
-------------------------------------------------------------------------------
--- | Like 'testModel', but also interactively dumps all of the derived theorems
--- of your model. This is very helpful for finding dodgy derivations and
--- outright contradictions.
-theoremsOf :: ExpQ -> ExpQ
-theoremsOf = (theoremsOfImpl =<<)
 
 constructLaws :: Exp -> Q [Theorem]
 constructLaws z = do
@@ -130,15 +100,9 @@ constructLaws z = do
     printStuff md "Contradictions" contradicts
   pure $ theorems ++ dodgy ++ contradicts
 
-emitProperties :: [Theorem] -> ExpQ
-emitProperties laws = do
-  tests <- buildPropTests laws
-  listE $ fmap pure tests
-
-theoremsOfImpl :: Exp -> ExpQ
-theoremsOfImpl z = do
-  laws <- constructLaws z
-  tests <- buildPropTests laws
+emitProperties :: M.Map Name Type -> [Theorem] -> ExpQ
+emitProperties defs laws = do
+  tests <- buildPropTests defs laws
   listE $ fmap pure tests
 
 printStuff :: Module -> String -> [Theorem] -> IO ()

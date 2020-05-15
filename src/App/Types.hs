@@ -23,6 +23,7 @@ data Decl a
   | Other a
   | EmptyTypeD EmptyType
   | Opening
+  | Default String a
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data EmptyType = EmptyType String [String]
@@ -49,11 +50,12 @@ data StuffMap a = StuffMap
   , smOther      :: [Decl a]
   , smSigs       :: [TypeSig a]
   , smEmptyTypes :: [EmptyType]
+  , smDefaults   :: M.Map String a
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 instance Semigroup (StuffMap a) where
-  StuffMap a1 b1 c1 d1 e1 f1 g1 <> StuffMap a2 b2 c2 d2 e2 f2 g2 =
+  StuffMap a1 b1 c1 d1 e1 f1 g1 h1 <> StuffMap a2 b2 c2 d2 e2 f2 g2 h2 =
     StuffMap
       (a1 <> a2)
       (b1 <> b2)
@@ -62,9 +64,19 @@ instance Semigroup (StuffMap a) where
       (e1 <> e2)
       (f1 <> f2)
       (g1 <> g2)
+      (h1 <> h2)
 
 instance Monoid (StuffMap a) where
-  mempty = StuffMap mempty mempty mempty mempty mempty mempty mempty
+  mempty =
+    StuffMap
+      mempty
+      mempty
+      mempty
+      mempty
+      mempty
+      mempty
+      mempty
+      mempty
 
 data SourceSpan = SourceSpan Pos Pos
   deriving (Eq, Ord, Show)
