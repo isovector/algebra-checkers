@@ -104,6 +104,13 @@ typecheck scope = (substZonked =<<) . \case
       unifyTy' innert et
     unifyTy' t $ ListT `AppT` innert
     pure t
+  TupE exps -> do
+    t <- freshTy
+    tts <- for exps $ \e -> do
+      typecheck scope e
+    unifyTy' t $ foldl AppT (TupleT $ length exps) tts
+
+    pure t
 
 
   x -> error $ mappend "typecheck" $ show x
