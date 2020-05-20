@@ -68,10 +68,13 @@ typecheck scope = (substZonked =<<) . \case
       DataConI _ t _ -> instantiate' t
       x -> error $ mappend "ConE " $ show x
   VarE n -> do
-    qReify n >>= \case
-      VarI _ t _ -> instantiate' t
-      ClassOpI _ t _ -> instantiate' t
-      x -> error $ mappend "VarE " $ show x
+    case M.lookup n scope of
+      Just t -> pure t
+      Nothing ->
+        qReify n >>= \case
+          VarI _ t _ -> instantiate' t
+          ClassOpI _ t _ -> instantiate' t
+          x -> error $ mappend "VarE " $ show x
   AppE f a -> do
     t <- freshTy
     ft <- typecheck scope f
@@ -95,6 +98,22 @@ typecheck scope = (substZonked =<<) . \case
 
     unifyTy' opt $ e1t :-> e2t :-> t
     pure t
+  InfixE (Just e1) op Nothing -> do
+    t <- freshTy
+    opt <- typecheck scope op
+    e1t <- typecheck scope e1
+    e2t <- freshTy
+
+    unifyTy' opt $ e1t :-> e2t :-> t
+    pure $ e2t :-> t
+  InfixE Nothing op (Just e2) -> do
+    t <- freshTy
+    opt <- typecheck scope op
+    e1t <- freshTy
+    e2t <- typecheck scope e2
+
+    unifyTy' opt $ e1t :-> e2t :-> t
+    pure $ e1t :-> t
   ParensE e -> typecheck scope e
   ListE exps -> do
     t <- freshTy
@@ -109,11 +128,23 @@ typecheck scope = (substZonked =<<) . \case
     tts <- for exps $ \e -> do
       typecheck scope e
     unifyTy' t $ foldl AppT (TupleT $ length exps) tts
-
+    pure t
+  LamE ps e -> do
+    let pns = fmap getVarPat ps
+    t <- freshTy
+    tps <- for pns $ const freshTy
+    et <- typecheck (M.fromList (zip pns tps) <> scope) e
+    unifyTy t $ foldr (:->) et tps
     pure t
 
 
+
+
   x -> error $ mappend "typecheck" $ show x
+
+getVarPat :: Pat -> Name
+getVarPat (VarP n) = n
+getVarPat p = error $ "getVarPat: requires a variable pattern, got: " ++ show p
 
 
 freshTy :: MonadTc m => m Type
