@@ -3,7 +3,6 @@
 
 module AlgebraCheckers.Suggestions where
 
-import Debug.Trace
 import AlgebraCheckers.Patterns
 import AlgebraCheckers.Ppr
 import AlgebraCheckers.Unification

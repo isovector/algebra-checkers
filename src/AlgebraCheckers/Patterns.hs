@@ -26,13 +26,13 @@ pattern LawEq exp1 exp2
           (Just exp2)
 
 
-arg :: Exp -> Maybe (Exp, Exp)
-arg (InfixE (Just f) (VarE ((==) '($) -> True)) (Just e)) = Just (f, e)
-arg (AppE f e) = Just (f, e)
-arg _ = Nothing
+getArg :: Exp -> Maybe (Exp, Exp)
+getArg (InfixE (Just f) (VarE ((==) '($) -> True)) (Just e)) = Just (f, e)
+getArg (AppE f e) = Just (f, e)
+getArg _ = Nothing
 
 pattern App :: Exp -> Exp -> Exp
-pattern App f e <- (arg -> Just (f, e))
+pattern App f e <- (getArg -> Just (f, e))
   where
     App f e = AppE f e
 

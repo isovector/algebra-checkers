@@ -7,8 +7,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module AlgebraCheckers.Typechecking
-  ( inferUnboundVars
-  , isFunctionWithArity
+  ( inferUnboundVarsAndTypecheck
   , typecheck
   , monomorphize
   , pattern (:->)
@@ -17,8 +16,6 @@ module AlgebraCheckers.Typechecking
 
 import           AlgebraCheckers.Unification (unboundVars, varsToQuantify)
 import           AlgebraCheckers.Utils
-import           Control.Arrow (second)
-import           Control.Monad
 import           Data.Foldable
 import           Data.Generics.Aliases
 import           Data.Generics.Schemes
@@ -26,9 +23,7 @@ import qualified Data.Map as M
 import           Data.Maybe
 import           Data.Traversable
 import           Data.Word
-import           Debug.Trace
-import           Language.Haskell.TH.Datatype (applySubstitution, resolveTypeSynonyms)
-import           Language.Haskell.TH.Ppr (ppr)
+import           Language.Haskell.TH.Datatype (applySubstitution)
 import           Language.Haskell.TH.Syntax
 import           Language.Haskell.TH.Typecheck
 import           Test.QuickCheck.Checkers
@@ -59,7 +54,7 @@ instantiate' t = pure t
 
 
 typecheck :: MonadTc m => Scope -> Exp -> m Type
-typecheck scope = (substZonked =<<) . \case
+typecheck scope = \case
   UnboundVarE n -> do
     t <- freshTy
     pure $ fromMaybe t $ M.lookup n scope
@@ -159,15 +154,16 @@ bndrName (PlainTV n) = n
 bndrName (KindedTV n _) = n
 
 
-inferUnboundVars :: Exp -> Q Scope
-inferUnboundVars e = runTc $ do
+inferUnboundVarsAndTypecheck :: Exp -> Q (Scope, Type)
+inferUnboundVarsAndTypecheck e = runTc $ do
   let unbound = varsToQuantify e
   vars <-
     fmap M.fromList $ for unbound $ \var -> do
       t <- freshTy
       pure (var, t)
-  void $ typecheck vars e
-  traverse substZonked vars
+  t <- substZonked =<< typecheck vars e
+  sc <- traverse substZonked vars
+  pure (sc, t)
 
 typecheckExp :: Exp -> Q Type
 typecheckExp e = runTc $ do
@@ -187,39 +183,6 @@ pattern t :-> ts <- AppT (AppT ArrowT t) ts
 
 infixr 0 :->
 
-
-headAppT :: Type -> Maybe (Name, [Type])
-headAppT (ConT n) = Just (n, [])
-headAppT (AppT a t) = fmap (second (++ [t])) (headAppT a)
-headAppT _ = Nothing
-
-
-isFunctionWithArity :: Int -> Type -> Q Bool
-isFunctionWithArity n t = runTc $ do
-  t'  <- runQ $ resolveTypeSynonyms t
-  tys <- for [0..n] $ const freshTy
-  let arr = foldr1 (:->) tys
-  unifyTyResult t' arr >>= \case
-    Equal -> pure True
-    _     -> pure False --  do
-      -- case headAppT t' of
-      --   Nothing -> pure $ trace (show t) False
-      --   Just (h, apps) -> runQ (reify h) >>= \case
-      --     TyConI (NewtypeD _ _ vars _ con _) ->
-      --       case getNewtypeConType con of
-      --         Just nty ->
-      --           runQ
-      --             $ isFunctionWithArity n
-      --             $ applySubstitution
-      --                 (M.fromList $ zip (fmap bndrName vars) apps)
-      --             $ nty
-      --         Nothing -> trace "not a newtype" $ pure False
-      --     _ -> pure $ trace "bad reify" False
-
-getNewtypeConType :: Con -> Maybe Type
-getNewtypeConType (NormalC _ [(_, t)]) = Just t
-getNewtypeConType (RecC _ [(_, _, t)]) = Just t
-getNewtypeConType _ = Nothing
 
 
 unifyTy' :: MonadTc m => Type -> Type -> m ()
