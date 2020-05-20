@@ -55,8 +55,8 @@ backcolorize True c doc
   Ppr.<> doc
   Ppr.<> zeroWidthText (setSGRCode [SetDefaultColor Background])
 
-showSaneTheorem :: Bool -> Theorem -> Doc
-showSaneTheorem c (Law n a b) = hang (text "•") 2 $
+showSaneTheorem :: Bool -> CheckedTheorem -> Doc
+showSaneTheorem c (Law (n, _) a b) = hang (text "•") 2 $
   sep
   [ hang (colorize c exprColor $ ppr $ deModuleName a) 6
       . hang (text "=") 2
@@ -66,8 +66,8 @@ showSaneTheorem c (Law n a b) = hang (text "•") 2 $
   , nest 2 $ parens $ showTheoremSource c n
   ]
 
-showContradictoryTheorem :: Bool -> Theorem -> TheoremProblem -> Doc
-showContradictoryTheorem c (Law n a b) (Contradiction reason) = hang (text "•") 2 $
+showContradictoryTheorem :: Bool -> CheckedTheorem -> ContradictionReason -> Doc
+showContradictoryTheorem c (Law (n, _) a b) reason = hang (text "•") 2 $
   sep
   [ vcat
       [ backcolorize c Red $ hang (ppr $ deModuleName a) 6

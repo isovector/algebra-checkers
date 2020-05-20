@@ -94,15 +94,15 @@ prop_laws = fmap snd $ $(do
   Just defs <- getQ
   emitProperties defs decs)
 
-prop_model_laws :: [(String, Property)]
-prop_model_laws = $(do
-  tts <- fmap (fromMaybe mempty) getQ
-  Just decs <- getQ
-  Just nms <- getQ
-  Just defs <- getQ
-  decs' <- remapModelTypes tts $ sloppyReplaceWithModelNames mkModelName nms decs
-  emitProperties defs decs'
-  )
+-- prop_model_laws :: [(String, Property)]
+-- prop_model_laws = $(do
+--   tts <- fmap (fromMaybe mempty) getQ
+--   Just decs <- getQ
+--   Just nms <- getQ
+--   Just defs <- getQ
+--   decs' <- remapModelTypes tts $ sloppyReplaceWithModelNames mkModelName nms decs
+--   emitProperties defs decs'
+--   )
 |]
 
 

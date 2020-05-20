@@ -49,17 +49,17 @@ app
   . addHeader "{-# LANGUAGE DeriveGeneric #-}"
   . addHeader "{-# LANGUAGE TypeFamilies #-}"
   . addHeader "{-# OPTIONS_GHC -fno-warn-unused-imports #-}"
+  . addImport "AlgebraCheckers (law)"
+  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel, mkModelName, sloppyReplaceWithModelNames, remapModelTypes, constructTTs)"
+  . addImport "AlgebraCheckers.TH (constructLaws, emitProperties)"
+  . addImport "AlgebraCheckers.Tools (ModeledBy)"
+  . addImport "Data.Maybe (fromMaybe)"
+  . addImport "Data.Traversable (sequenceA)"
+  . addImport "GHC.Generics (Generic)"
+  . addImport "Language.Haskell.TH.Syntax (putQ, getQ, reportError, mkName)"
   . addImport "Test.QuickCheck"
   . addImport "Test.QuickCheck.Checkers (Model (..), EqProp (..))"
-  . addImport "GHC.Generics (Generic)"
-  . addImport "Data.Maybe (fromMaybe)"
   . addImport "qualified Data.Map as M"
-  . addImport "Data.Traversable (sequenceA)"
-  . addImport "AlgebraCheckers (law)"
-  . addImport "AlgebraCheckers.Tools (ModeledBy)"
-  . addImport "AlgebraCheckers.TH (constructLaws, emitProperties)"
-  . addImport "AlgebraCheckers.Modeling (modelsFor, unmodel, mkModelName, sloppyReplaceWithModelNames, remapModelTypes, constructTTs)"
-  . addImport "Language.Haskell.TH.Syntax (putQ, getQ, reportError, mkName)"
   . buildStuffMap
 
 
@@ -68,4 +68,5 @@ main
   = traverse_ (putStrLn . app)
   . parseAndSubst
     =<< readFile "/home/sandy/prj/algebra-checkers/test/AppTest.hs"
+
 

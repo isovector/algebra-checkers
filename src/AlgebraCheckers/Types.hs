@@ -33,18 +33,10 @@ instance Eq a => Eq (Law a) where
       [ equalUpToAlpha a b && equalUpToAlpha a' b'
       ]
 
-data LawSort
-  = LawName String
-  deriving (Eq, Ord, Show)
-
-type NamedLaw = Law LawSort
 type Theorem  = Law TheoremSource
+type CheckedTheorem = Law (TheoremSource, Maybe ContradictionReason)
 
 data Arity = Binary | Prefix Int
-  deriving (Eq, Ord, Show)
-
-data TheoremProblem
-  = Contradiction ContradictionReason
   deriving (Eq, Ord, Show)
 
 data ContradictionReason

@@ -27,9 +27,9 @@ import Test.QuickCheck hiding (collect)
 import Test.QuickCheck.Checkers ((=-=))
 
 
-showTheorem :: Bool -> Module -> Theorem -> Doc
-showTheorem c md thm =
-  case sanityCheck' md thm of
+showTheorem :: Bool -> Module -> CheckedTheorem -> Doc
+showTheorem c _md thm =
+  case snd $ lawData thm of
     Just contradiction ->
       showContradictoryTheorem c thm contradiction
     Nothing -> showSaneTheorem c thm
@@ -42,7 +42,7 @@ mkPattern defs nm ty = do
     False -> sigP (varP nm) $ pure mono
 
 
-propTestEq :: M.Map Name Type -> Theorem -> ExpQ
+propTestEq :: M.Map Name Type -> CheckedTheorem -> ExpQ
 propTestEq defs t@(Law _ exp1 exp2) = do
   md <- thisModule
   eq2exp <- [e| $(pure exp1) `eq2` $(pure exp2) |]
@@ -71,16 +71,16 @@ propTestEq defs t@(Law _ exp1 exp2) = do
     |]
 
 
-buildPropTests :: M.Map Name Type -> [Theorem] -> Q [Exp]
+buildPropTests :: M.Map Name Type -> [CheckedTheorem] -> Q [Exp]
 buildPropTests defs ts = do
   traverse (propTestEq defs) ts
 
 
-parseLaws :: Exp -> [Law LawSort]
+parseLaws :: Exp -> [Theorem]
 parseLaws (DoE z) = concatMap collect z
 parseLaws _ = error "you must call parseLaws with a do block"
 
-constructLaws :: Exp -> Q [Theorem]
+constructLaws :: Exp -> Q [CheckedTheorem]
 constructLaws z = do
   md <- thisModule
   let parsed = parseLaws z
@@ -89,20 +89,20 @@ constructLaws z = do
         pure $ unknownVars a ++ unknownVars b
   unless (null unknown) $
     fail $ "Unknown variables: " ++ show unknown
-  let ths = theorize md $ parsed
-  let (theorems, contradicts) = partition (sanityCheck md) ths
+  let ths = theorize md $ fmap (sanityCheck md) $ parsed
+  let (theorems, contradicts) = partition isSane ths
   runIO $ do
     putStrLn ""
     printStuff md "Theorems"       theorems
     printStuff md "Contradictions" contradicts
   pure $ theorems ++ contradicts
 
-emitProperties :: M.Map Name Type -> [Theorem] -> ExpQ
+emitProperties :: M.Map Name Type -> [CheckedTheorem] -> ExpQ
 emitProperties defs laws = do
   tests <- buildPropTests defs laws
   listE $ fmap pure tests
 
-printStuff :: Module -> String -> [Theorem] -> IO ()
+printStuff :: Module -> String -> [CheckedTheorem] -> IO ()
 printStuff md sort laws =
   when (not $ null laws) $ do
     putStrLn . render
@@ -111,8 +111,8 @@ printStuff md sort laws =
     putStrLn ""
     putStrLn ""
 
-collect :: Stmt -> [Law LawSort]
-collect (LawDef lawname exp1 exp2) = [Law (LawName lawname) exp1 exp2]
+collect :: Stmt -> [Theorem]
+collect (LawDef lawname exp1 exp2) = [Law (LawDefn lawname) exp1 exp2]
 collect (HomoDef ty bndr expr)     = makeHomo ty (knownHomos ty) bndr expr
 collect x = error $ show x
   -- "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
