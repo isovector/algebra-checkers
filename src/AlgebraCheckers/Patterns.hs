@@ -41,12 +41,6 @@ getBinderName (VarP n) = Just n
 getBinderName (SigP p _) = getBinderName p
 getBinderName _ = Nothing
 
-pattern NotDodgyDef :: Exp -> Exp -> Stmt
-pattern NotDodgyDef exp1 exp2 <- NoBindS (NotDodgyN `App` LawEq exp1 exp2)
-
-pattern NotDodgyN :: Exp
-pattern NotDodgyN <- VarE ((==) 'notDodgy -> True)
-
 pattern LawN :: Exp
 pattern LawN <- VarE ((==) 'law -> True)
 
@@ -93,21 +87,6 @@ law
 law =
   error "law may be called only inside of a call to testModel or theoremsOf"
 
-
-------------------------------------------------------------------------------
--- | Convinces 'AlgebraCheckers.theoremsOf' that the following law is not dodgy,
--- preventing it from appearing in the dodgy theorems list.
---
--- This function does not introduce a new law.
---
--- This function /must/ be called only in the context of either
--- 'AlgebraCheckers.testModel' or 'AlgebraCheckers.theoremsOf'.
-notDodgy
-    :: Bool  -- ^ Law. /This is not any ordinary 'Bool'!/ See the documentation
-             -- on 'law' for more information.
-    -> law
-notDodgy =
-  error "notDodgy may be called only inside of a call to testModel or theoremsOf"
 
 
 ------------------------------------------------------------------------------

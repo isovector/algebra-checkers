@@ -36,8 +36,6 @@ sanityCheck' md (Law _ lhs rhs) =
         on (&&) isFullyMatchable lhs rhs `implies` (==) lhs rhs
     , bool (Left $ Contradiction UnequalValues) (Right ()) $ fromMaybe True $
         liftM2 (==) (matchableAppHead lhs) (matchableAppHead rhs)
-    , bool (Right ()) (Left $ Dodgy SelfRecursive) $ nonlinearUse md lhs rhs
-    , bool (Right ()) (Left $ Dodgy SelfRecursive) $ nonlinearUse md rhs lhs
     ]
   where
     is_unbound_ctor (UnboundVarE n) = isUpper . head $ nameBase n
@@ -77,7 +75,6 @@ isFullyMatchable _                        = False
 
 namedLawToEither :: NamedLaw -> Either (Law ()) (Law String)
 namedLawToEither (Law (LawName n) a b) = Right (Law n a b)
-namedLawToEither (Law LawNotDodgy a b) = Left (Law () a b)
 
 theorize :: Module -> [NamedLaw] -> [Theorem]
 theorize md named_laws =
@@ -96,11 +93,6 @@ matchableAppHead :: Exp -> Maybe Name
 matchableAppHead (ConE n)   = Just n
 matchableAppHead (AppE f _) = matchableAppHead f
 matchableAppHead _          = Nothing
-
-nonlinearUse :: Module -> Exp -> Exp -> Bool
-nonlinearUse md exp1 exp2 =
-  let exp2s = mapMaybe (\exp -> splitApps exp) $ fmap seExp $ subexps exp2
-   in any (\(apphead, exps) -> nonlinearFunc md apphead && any (equalUpToAlpha exp1) exps) exp2s
 
 nonlinearFunc :: Module -> Name -> Bool
 nonlinearFunc md name = not $ sameModule md name

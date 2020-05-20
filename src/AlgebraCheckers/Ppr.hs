@@ -78,18 +78,6 @@ showContradictoryTheorem c (Law n a b) (Contradiction reason) = hang (text "•"
       ]
   , nest 2 $ parens $ showTheoremSource c n
   ]
-showContradictoryTheorem c (Law n a b) (Dodgy reason) = hang (text "•") 2 $
-  sep
-  [ vcat
-      [ hang (backcolorize c Black $ ppr $ deModuleName a) 6
-          . hang (text "=") 2
-          . backcolorize c Black
-          . ppr
-          $ deModuleName b
-      , nest 2 $ pprDodgy reason
-      ]
-  , nest 2 $ parens $ showTheoremSource c n
-  ]
 
 plural :: String -> String -> [a] -> Doc
 plural one _ [_] = text one
@@ -118,10 +106,6 @@ pprContradiction (UnknownConstructors vars) =
     ]
 pprContradiction UnequalValues =
   text "unequal values"
-
-pprDodgy :: DodgyReason -> Doc
-pprDodgy SelfRecursive =
-  text "not necessarily productive"
 
 
 exprColor :: Color

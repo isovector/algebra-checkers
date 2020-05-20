@@ -90,15 +90,12 @@ constructLaws z = do
   unless (null unknown) $
     fail $ "Unknown variables: " ++ show unknown
   let ths = theorize md $ parsed
-  let (theorems, problems) = partition (sanityCheck md) ths
-      contradicts = filter (maybe False isContradiction . sanityCheck' md) problems
-      dodgy       = filter (maybe False isDodgy . sanityCheck' md) problems
+  let (theorems, contradicts) = partition (sanityCheck md) ths
   runIO $ do
     putStrLn ""
     printStuff md "Theorems"       theorems
-    printStuff md "Dodgy Theorems" dodgy
     printStuff md "Contradictions" contradicts
-  pure $ theorems ++ dodgy ++ contradicts
+  pure $ theorems ++ contradicts
 
 emitProperties :: M.Map Name Type -> [Theorem] -> ExpQ
 emitProperties defs laws = do
@@ -116,7 +113,6 @@ printStuff md sort laws =
 
 collect :: Stmt -> [Law LawSort]
 collect (LawDef lawname exp1 exp2) = [Law (LawName lawname) exp1 exp2]
-collect (NotDodgyDef exp1 exp2)    = [Law LawNotDodgy exp1 exp2]
 collect (HomoDef ty bndr expr)     = makeHomo ty (knownHomos ty) bndr expr
 collect x = error $ show x
   -- "collect must be called with the form [e| law \"name\" (foo a b c == bar a d e) |]"
