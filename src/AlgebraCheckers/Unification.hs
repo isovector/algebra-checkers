@@ -1,13 +1,17 @@
-{-# LANGUAGE LambdaCase      #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE ViewPatterns    #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ViewPatterns          #-}
 
 module AlgebraCheckers.Unification where
 
 import           AlgebraCheckers.Utils
 import           Control.Applicative
 import           Control.Monad.State
-import           Control.Monad.Trans.Writer
+import           Control.Monad.Trans.Writer.CPS
 import           Data.Char
 import           Data.Data
 import           Data.Function
@@ -18,6 +22,12 @@ import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
 import           Prelude hiding (exp)
 import           {-# SOURCE #-} AlgebraCheckers.Types
+import Data.DList (DList)
+import qualified Data.DList as DL
+
+instance (Monoid w, MonadState s m) => MonadState s (WriterT w m) where
+  get = writerT $ fmap (, mempty) $ get
+  put s = writerT $ fmap (, mempty) $ put s
 
 
 data SubExp = SubExp
@@ -120,9 +130,16 @@ criticalPairs other me = do
   let (a,b) = res
   pure (b, a)
 
+applyLaw :: Law a -> [SubExp] -> Exp -> [Exp]
+applyLaw law pats exp = do
+  let (lhs, rhs) = (lawLhsExp law, lawRhsExp law)
+  pat <- pats
+  Just subs <- pure $ unify (seExp pat) lhs
+  pure $ replaceSubexp pat (const $ bindVars subs rhs) exp
 
-applyLaw :: Law a -> Exp -> [Exp]
-applyLaw law exp = do
+
+stupidlySlowApplyLaw :: Law a -> Exp -> [Exp]
+stupidlySlowApplyLaw law exp = do
   let (lhs, rhs) = (lawLhsExp law, lawRhsExp law)
   pat <- subexps exp
   Just subs <- pure $ unify (seExp pat) lhs
@@ -130,14 +147,14 @@ applyLaw law exp = do
 
 
 subexps :: Exp -> [SubExp]
-subexps e =
+subexps e = DL.toList $
   flip evalState 0 $ execWriterT $
     everywhereM (mkM  $ \e' -> do
       ix <- get
       modify (+1)
       case e' of
         UnboundVarE _ -> pure ()
-        se -> tell [(SubExp se ix)]
+        se -> tell $ DL.singleton (SubExp se ix)
       pure e'
                              ) e
 

@@ -74,14 +74,14 @@ weightLaws laws =
 presentationEdges :: [Law a] -> Exp -> [Exp]
 presentationEdges theorems e = do
   law <- theorems
-  z <- applyLaw law e
+  z <- stupidlySlowApplyLaw law e
   pure z
 
 presentationEdges' :: [Law Int] -> Exp -> [(Int, Exp)]
 presentationEdges' theorems e = do
-  traceM $ show $ ppr e
+  let pats = subexps e
   law <- theorems
-  z <- applyLaw law e
+  z   <- applyLaw law pats e
   pure (lawData law, z)
 
 

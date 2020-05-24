@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TypeApplications #-}
 
-{-# OPTIONS_GHC -fexternal-interpreter -prof -opti+RTS -opti-p #-}
+-- {-# OPTIONS_GHC -fexternal-interpreter -prof -opti+RTS -opti-p #-}
 
 
 module ListPresentation where
@@ -44,7 +44,7 @@ do
     law "empty" $ list nil == []
     law "homo" $ list (cat (unit x) xs) == x : list xs
     |]
-  exps <- algebra ['cat] ''Seq
+  exps <- algebra ['cat, 'nil, 'list] ''Seq
   -- exps <- pure @[] <$> mkExpr (VarE 'cat `AppE` (ConE 'Nil)) 1
   for_ exps $ \z@(_, e) -> do
     !res <- pure $ smarter (bothWays =<< laws) z

@@ -38,6 +38,7 @@ dependencies:
 - parsec
 - string-interpolate
 - search-algorithms
+- dlist
 
 ghc-options:
   - -Wall
