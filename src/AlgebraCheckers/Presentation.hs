@@ -9,7 +9,6 @@ import           AlgebraCheckers.Types
 import           AlgebraCheckers.Unification
 import           Algorithm.Search
 import           Control.Arrow
-import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad
 import           Data.Data
@@ -64,6 +63,9 @@ scoreLaw (Law _ lhs rhs) =
       lcons = countCons lhs
       rcons = countCons rhs
    in Law (rexps - lexps + (rcons - lcons)) lhs rhs
+
+-- scoreExp :: Exp -> Int
+-- scoreExp =
 
 weightLaws :: [Law Int] -> [Law Int]
 weightLaws laws =
@@ -120,9 +122,6 @@ smarter ts (bound, e) =
   let ws = weightLaws $ fmap scoreLaw ts
    in fmap snd $ betterDijkstra (presentationEdges' ws) (\x -> isWhnf x || hasEliminated bound x) e
 
-
-withTimeout :: NFData a => Int -> a -> Maybe a
-withTimeout time = unsafePerformIO . timeout time . evaluate . force
 
 withTimeoutSpine :: Int -> a -> Maybe a
 withTimeoutSpine time z = unsafePerformIO . timeout time . evaluate $ seq z z
