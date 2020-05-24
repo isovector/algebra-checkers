@@ -2,6 +2,8 @@
 {-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TypeApplications #-}
 
+{-# OPTIONS_GHC -pgmi /home/sandy/.stack/programs/x86_64-linux/ghc-tinfo6-8.6.5/lib/ghc-8.6.5/bin/ghc-iserv-prof -fexternal-interpreter -opti+RTS -opti-p #-}
+
 module ListPresentation where
 
 import Data.Foldable
