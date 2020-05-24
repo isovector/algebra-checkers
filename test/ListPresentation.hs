@@ -55,6 +55,6 @@ do
       . maybe
           (text "couldn't solve: " P.<> ppr e)
           (vcat . fmap ppr . mappend [e])
-      $ dumb defs z
+      $ smarter (bothWays =<< defs) z
   pure []
 

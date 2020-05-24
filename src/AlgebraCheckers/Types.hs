@@ -28,8 +28,8 @@ data Law a = Law
   }
   deriving (Ord, Show, Data, Typeable)
 
-swapLaw :: Law a -> Law a
-swapLaw (Law a b c) = Law a c b
+modifyLawData :: (a -> b) -> Law a -> Law b
+modifyLawData f (Law a l r) = Law (f a) l r
 
 instance Eq a => Eq (Law a) where
   Law _ a a' == Law _ b b' =
