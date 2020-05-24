@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns     #-}
 {-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -10,6 +11,7 @@ import AlgebraCheckers.TH
 import Language.Haskell.TH
 import Language.Haskell.TH.PprLib (vcat, text)
 import qualified Language.Haskell.TH.PprLib as P
+import           Debug.Trace
 
 
 data Seq a = Nil | UnitCat a (Seq a)
@@ -27,16 +29,6 @@ list = undefined
 pure []
 
 do
-  defs <- parseLaws <$> [e| do
-    law "defn:Nil" $ Nil == nil
-    law "defn:UnitCat" $ UnitCat x xs == cat (unit x) xs
-
-    law "empty" $ list nil == []
-    law "homo" $ list (cat (unit x) xs) == x : list xs
-    law "assoc" $ cat xs (cat ys zs) == cat (cat xs ys) zs
-    law "lid" $ cat nil xs == xs
-    law "rid" $ cat xs nil == xs
-    |]
   laws <- parseLaws <$> [e| do
     law "defn:Nil" $ Nil == nil
     law "defn:UnitCat" $ UnitCat x xs == cat (unit x) xs
@@ -47,14 +39,17 @@ do
     law "empty" $ list nil == []
     law "homo" $ list (cat (unit x) xs) == x : list xs
     |]
-  exps <- algebra ['list, 'nil, 'cat] ''Seq
+  exps <- algebra ['cat] ''Seq
   -- exps <- pure @[] <$> mkExpr (VarE 'cat `AppE` (ConE 'Nil)) 1
-  for_ exps $ \z@(_, e) ->
+  for_ exps $ \z@(_, e) -> do
+    !res <- pure $ smarter (bothWays =<< laws) z
+    traceM "------- DONE ------"
+
     reportWarning
       . show
       . maybe
           (text "couldn't solve: " P.<> ppr e)
           (vcat . fmap ppr . mappend [e])
-      $ smarter (bothWays =<< defs) z
+      $ res
   pure []
 

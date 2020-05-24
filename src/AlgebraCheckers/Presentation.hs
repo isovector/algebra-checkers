@@ -58,7 +58,7 @@ scoreLaw (Law _ lhs rhs) =
       rexps = length $ subexps rhs
       lcons = countCons lhs
       rcons = countCons rhs
-   in Law (rexps - lexps + (rcons - lcons) * 5) lhs rhs
+   in Law (rexps - lexps + (rcons - lcons)) lhs rhs
 
 weightLaws :: [Law Int] -> [Law Int]
 weightLaws laws =
@@ -74,6 +74,7 @@ presentationEdges theorems e = do
 
 presentationEdges' :: [Law Int] -> Exp -> [(Int, Exp)]
 presentationEdges' theorems e = do
+  traceM $ show $ ppr e
   law <- theorems
   z <- applyLaw law e
   pure (lawData law, z)
