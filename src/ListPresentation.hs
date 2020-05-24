@@ -58,33 +58,3 @@ do
       $ res
   pure []
 
-
-cat (UnitCat (cat nil x_0) x_1) x_2
-cat (UnitCat (cat x_0 nil) x_1) x_2
-cat (UnitCat x_0 (cat nil x_1)) x_2
-cat (UnitCat x_0 (cat x_1 nil)) x_2
-cat (UnitCat x_0 x_1) (cat nil x_2)
-cat (UnitCat x_0 x_1) (cat nil x_2)
-cat (UnitCat x_0 x_1) (cat x_2 nil)
-cat (UnitCat x_0 x_1) (cat x_2 nil)
-cat (UnitCat x_0 x_1) x_2
-cat (UnitCat x_0 x_1) x_2
-cat (UnitCat x_0 x_1) x_2
-cat (cat (UnitCat x_0 x_1) nil) x_2
-cat (cat (UnitCat x_0 x_1) nil) x_2
-cat (cat (UnitCat x_0 x_1) x_2) nil
-cat (cat (UnitCat x_0 x_1) x_2) nil
-cat (cat (UnitCat x_0 x_1)) nil x_2
-cat (cat (UnitCat x_0) nil x_1) x_2
-cat (cat (unit x_0) x_1) x_2
-cat (cat UnitCat nil x_0 x_1) x_2
-cat (cat nil (UnitCat x_0 x_1)) x_2
-cat (cat nil (UnitCat x_0 x_1)) x_2
-cat (cat nil (UnitCat x_0) x_1) x_2
-cat (cat nil UnitCat x_0 x_1) x_2
-cat (unit x_0) (cat x_1 x_2)
-cat nil (cat (UnitCat x_0 x_1) x_2)
-cat nil (cat (UnitCat x_0 x_1) x_2)
-cat nil (cat (UnitCat x_0 x_1)) x_2
-cat nil cat (UnitCat x_0 x_1) x_2
-cat cat nil (UnitCat x_0 x_1) x_2
