@@ -18,7 +18,7 @@ import qualified Data.Map as M
 import           Data.Maybe
 import           Language.Haskell.TH hiding (ppr, Arity)
 import           Language.Haskell.TH.Syntax (putQ, getQ)
-import           Test.QuickCheck.Checkers (Model, ModelOf, model)
+import           Test.QuickCheck.Checkers (Model, model)
 
 
 data TypeTemplate = TypeTemplate
@@ -81,8 +81,8 @@ unravel _ = error "unravel"
 
 
 
-unmodel :: Model a => ModelOf a -> a
-unmodel = undefined
+-- unmodel :: Model a => ModelOf a -> a
+-- unmodel = undefined
 
 
 getModelType :: M.Map Name TypeTemplate -> Type -> Q Type
@@ -125,7 +125,7 @@ deleteFunctionCall nm = everywhere $ mkT $ \case
 genModel :: Data a => [Name] -> a -> a
 genModel nms
   = deleteFunctionCall 'model
-  . deleteFunctionCall 'unmodel
+  -- . deleteFunctionCall 'unmodel
   . replaceWithModelNames mkModelName nms
 
 

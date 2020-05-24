@@ -9,6 +9,8 @@ import           AlgebraCheckers.Types
 import           AlgebraCheckers.Unification
 import           Algorithm.Search
 import           Control.Arrow
+import           Control.DeepSeq
+import           Control.Exception
 import           Control.Monad
 import           Data.Data
 import           Data.Foldable
@@ -20,6 +22,9 @@ import qualified Data.Set as S
 import           Data.Traversable
 import           Debug.Trace
 import           Language.Haskell.TH
+import           System.IO.Unsafe
+import           System.Timeout
+
 
 
 
@@ -74,7 +79,6 @@ presentationEdges theorems e = do
 
 presentationEdges' :: [Law Int] -> Exp -> [(Int, Exp)]
 presentationEdges' theorems e = do
-  traceM $ show $ ppr e
   law <- theorems
   z <- applyLaw law e
   pure (lawData law, z)
@@ -115,6 +119,13 @@ smarter :: [Theorem] -> (S.Set Name, Exp) -> Maybe [Exp]
 smarter ts (bound, e) =
   let ws = weightLaws $ fmap scoreLaw ts
    in fmap snd $ betterDijkstra (presentationEdges' ws) (\x -> isWhnf x || hasEliminated bound x) e
+
+
+withTimeout :: NFData a => Int -> a -> Maybe a
+withTimeout time = unsafePerformIO . timeout time . evaluate . force
+
+withTimeoutSpine :: Int -> a -> Maybe a
+withTimeoutSpine time z = unsafePerformIO . timeout time . evaluate $ seq z z
 
 
 fnArity :: Type -> Int

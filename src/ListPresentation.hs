@@ -1,11 +1,12 @@
 {-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE NumDecimals      #-}
 {-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TypeApplications #-}
 
-{-# OPTIONS_GHC -pgmi /home/sandy/.stack/programs/x86_64-linux/ghc-tinfo6-8.6.5/lib/ghc-8.6.5/bin/ghc-iserv-prof -fexternal-interpreter -opti+RTS -opti-p #-}
 
 module ListPresentation where
 
+import Control.Monad
 import Data.Foldable
 import AlgebraCheckers.Presentation
 import AlgebraCheckers
@@ -44,14 +45,13 @@ do
   exps <- algebra ['cat] ''Seq
   -- exps <- pure @[] <$> mkExpr (VarE 'cat `AppE` (ConE 'Nil)) 1
   for_ exps $ \z@(_, e) -> do
-    !res <- pure $ smarter (bothWays =<< laws) z
-    traceM "------- DONE ------"
+    !res <- pure $ withTimeoutSpine 5e6 $ smarter (bothWays =<< laws) z
 
     reportWarning
       . show
       . maybe
           (text "couldn't solve: " P.<> ppr e)
           (vcat . fmap ppr . mappend [e])
-      $ res
+      $ join $ res
   pure []
 

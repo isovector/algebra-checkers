@@ -32,9 +32,16 @@ packages:
       sha256: 1e007eb17329ea5b2bf9efc801fc8d2daa97040d19db4b8274b4743ee145df8b
   original:
     hackage: search-algorithms-0.3.1@sha256:83d487688e79f7d354a638d893364cd34cb01352cac9281734c27ee640e31925,1825
+- completed:
+    hackage: string-interpolate-0.2.0.0@sha256:a96f7e744f49d795887236319f74b2797fe2cdaadf2d5c4b06845d7a6ba4dbff,2527
+    pantry-tree:
+      size: 616
+      sha256: 4160533ceb37446c054689513054d67093aed5bb1651011d9506dd579c815722
+  original:
+    hackage: string-interpolate-0.2.0.0@sha256:a96f7e744f49d795887236319f74b2797fe2cdaadf2d5c4b06845d7a6ba4dbff,2527
 snapshots:
 - completed:
-    size: 523443
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/0.yaml
-    sha256: 283773e7120f5446d961eab35ea95c9af9c24187cc178537bd29273200a05171
-  original: lts-14.0
+    size: 488576
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/15/0.yaml
+    sha256: e4b6a87b47ec1cf63a7f1a0884a3b276fce2b0d174a10e8753c4f618e7983568
+  original: lts-15.0
