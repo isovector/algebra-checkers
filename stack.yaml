@@ -12,5 +12,7 @@ extra-deps:
 # - checkers-0.5.5
 - ../checkers
 # - th-tc-0.2.1.0
+- search-algorithms-0.3.1@sha256:83d487688e79f7d354a638d893364cd34cb01352cac9281734c27ee640e31925,1825
+
 
 allow-newer: true

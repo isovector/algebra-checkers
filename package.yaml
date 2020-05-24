@@ -37,6 +37,7 @@ dependencies:
 - haskell-lexer
 - parsec
 - string-interpolate
+- search-algorithms
 
 ghc-options:
   - -Wall

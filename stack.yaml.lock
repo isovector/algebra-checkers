@@ -25,6 +25,13 @@ packages:
       sha256: 3887778ba91ac11e94300a82ce0898d9ce80dadcde7994676f3e66e7aee13bb7
   original:
     hackage: list-extras-0.4.1.4
+- completed:
+    hackage: search-algorithms-0.3.1@sha256:83d487688e79f7d354a638d893364cd34cb01352cac9281734c27ee640e31925,1825
+    pantry-tree:
+      size: 450
+      sha256: 1e007eb17329ea5b2bf9efc801fc8d2daa97040d19db4b8274b4743ee145df8b
+  original:
+    hackage: search-algorithms-0.3.1@sha256:83d487688e79f7d354a638d893364cd34cb01352cac9281734c27ee640e31925,1825
 snapshots:
 - completed:
     size: 523443

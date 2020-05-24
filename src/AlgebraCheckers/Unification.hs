@@ -121,6 +121,13 @@ criticalPairs other me = do
   pure (b, a)
 
 
+applyLaw :: Law a -> Exp -> [Exp]
+applyLaw law exp = do
+  let (lhs, rhs) = (lawLhsExp law, lawRhsExp law)
+  pat <- subexps exp
+  Just subs <- pure $ unify (seExp pat) lhs
+  pure $ replaceSubexp pat (const $ bindVars subs rhs) exp
+
 
 subexps :: Exp -> [SubExp]
 subexps e =

@@ -14,6 +14,7 @@ module AlgebraCheckers.Typechecking
   , typecheckExp
   ) where
 
+import           AlgebraCheckers.Types
 import           AlgebraCheckers.Unification (unboundVars, varsToQuantify)
 import           AlgebraCheckers.Utils
 import           Data.Foldable
@@ -174,15 +175,6 @@ typecheckExp e = runTc $ do
       pure (var, t)
   z <- typecheck vars e
   substZonked z
-
-
-pattern (:->) :: Type -> Type -> Type
-pattern t :-> ts <- AppT (AppT ArrowT t) ts
-  where
-    t :-> ts = AppT (AppT ArrowT t) ts
-
-infixr 0 :->
-
 
 
 unifyTy' :: MonadTc m => Type -> Type -> m ()
