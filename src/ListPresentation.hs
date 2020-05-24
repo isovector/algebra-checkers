@@ -3,6 +3,8 @@
 {-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TypeApplications #-}
 
+{-# OPTIONS_GHC -fexternal-interpreter -prof -opti+RTS -opti-p #-}
+
 
 module ListPresentation where
 
@@ -45,13 +47,44 @@ do
   exps <- algebra ['cat] ''Seq
   -- exps <- pure @[] <$> mkExpr (VarE 'cat `AppE` (ConE 'Nil)) 1
   for_ exps $ \z@(_, e) -> do
-    !res <- pure $ withTimeoutSpine 5e6 $ smarter (bothWays =<< laws) z
+    !res <- pure $ smarter (bothWays =<< laws) z
+    traceM "----- DONE -----"
 
     reportWarning
       . show
       . maybe
           (text "couldn't solve: " P.<> ppr e)
           (vcat . fmap ppr . mappend [e])
-      $ join $ res
+      $ res
   pure []
 
+
+cat (UnitCat (cat nil x_0) x_1) x_2
+cat (UnitCat (cat x_0 nil) x_1) x_2
+cat (UnitCat x_0 (cat nil x_1)) x_2
+cat (UnitCat x_0 (cat x_1 nil)) x_2
+cat (UnitCat x_0 x_1) (cat nil x_2)
+cat (UnitCat x_0 x_1) (cat nil x_2)
+cat (UnitCat x_0 x_1) (cat x_2 nil)
+cat (UnitCat x_0 x_1) (cat x_2 nil)
+cat (UnitCat x_0 x_1) x_2
+cat (UnitCat x_0 x_1) x_2
+cat (UnitCat x_0 x_1) x_2
+cat (cat (UnitCat x_0 x_1) nil) x_2
+cat (cat (UnitCat x_0 x_1) nil) x_2
+cat (cat (UnitCat x_0 x_1) x_2) nil
+cat (cat (UnitCat x_0 x_1) x_2) nil
+cat (cat (UnitCat x_0 x_1)) nil x_2
+cat (cat (UnitCat x_0) nil x_1) x_2
+cat (cat (unit x_0) x_1) x_2
+cat (cat UnitCat nil x_0 x_1) x_2
+cat (cat nil (UnitCat x_0 x_1)) x_2
+cat (cat nil (UnitCat x_0 x_1)) x_2
+cat (cat nil (UnitCat x_0) x_1) x_2
+cat (cat nil UnitCat x_0 x_1) x_2
+cat (unit x_0) (cat x_1 x_2)
+cat nil (cat (UnitCat x_0 x_1) x_2)
+cat nil (cat (UnitCat x_0 x_1) x_2)
+cat nil (cat (UnitCat x_0 x_1)) x_2
+cat nil cat (UnitCat x_0 x_1) x_2
+cat cat nil (UnitCat x_0 x_1) x_2

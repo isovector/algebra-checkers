@@ -58,14 +58,12 @@ countCons = everything (+) $ mkQ 0 $
 -- is, this is a negative cost!
 scoreLaw :: Law a -> Law Int
 scoreLaw (Law _ lhs rhs) =
-  let lexps = length $ subexps lhs
-      rexps = length $ subexps rhs
-      lcons = countCons lhs
-      rcons = countCons rhs
-   in Law (rexps - lexps + (rcons - lcons)) lhs rhs
+  Law (scoreExp rhs - scoreExp lhs) lhs rhs
 
--- scoreExp :: Exp -> Int
--- scoreExp =
+scoreExp :: Exp -> Int
+scoreExp = everything (+) $ mkQ 0 $ \case
+  ConE _ -> 2
+  _      -> 1
 
 weightLaws :: [Law Int] -> [Law Int]
 weightLaws laws =
@@ -81,6 +79,7 @@ presentationEdges theorems e = do
 
 presentationEdges' :: [Law Int] -> Exp -> [(Int, Exp)]
 presentationEdges' theorems e = do
+  traceM $ show $ ppr e
   law <- theorems
   z <- applyLaw law e
   pure (lawData law, z)
