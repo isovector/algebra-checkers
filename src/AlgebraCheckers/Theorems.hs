@@ -67,14 +67,14 @@ matchableMetaVars e =
     go _ = []
 
 isFullyMatchable :: Exp -> Bool
-isFullyMatchable (ConE _)                 = True
-isFullyMatchable (TupE es)                = all isFullyMatchable es
-isFullyMatchable (ListE es)               = all isFullyMatchable es
-isFullyMatchable (LitE _)                 = True
-isFullyMatchable (UnboundVarE _)          = True
-isFullyMatchable (AppE (UnboundVarE _) _) = False
-isFullyMatchable (AppE exp1 exp2)         = isFullyMatchable exp1 && isFullyMatchable exp2
-isFullyMatchable _                        = False
+isFullyMatchable (ConE _)                      = True
+isFullyMatchable (TupE (sequenceA -> Just es)) = all isFullyMatchable es
+isFullyMatchable (ListE es)                    = all isFullyMatchable es
+isFullyMatchable (LitE _)                      = True
+isFullyMatchable (UnboundVarE _)               = True
+isFullyMatchable (AppE (UnboundVarE _) _)      = False
+isFullyMatchable (AppE exp1 exp2)              = isFullyMatchable exp1 && isFullyMatchable exp2
+isFullyMatchable _                             = False
 
 theorize :: Module -> [CheckedTheorem] -> [CheckedTheorem]
 theorize md laws =

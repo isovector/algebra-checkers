@@ -5,6 +5,7 @@
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE ViewPatterns          #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module AlgebraCheckers.Unification where
 
@@ -13,6 +14,7 @@ import           Control.Applicative
 import           Control.Monad.State
 import           Control.Monad.Trans.Writer.CPS
 import           Data.Char
+import qualified Data.DList as DL
 import           Data.Data
 import           Data.Function
 import           Data.Generics.Aliases
@@ -22,8 +24,6 @@ import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
 import           Prelude hiding (exp)
 import           {-# SOURCE #-} AlgebraCheckers.Types
-import Data.DList (DList)
-import qualified Data.DList as DL
 
 instance (Monoid w, MonadState s m) => MonadState s (WriterT w m) where
   get = writerT $ fmap (, mempty) $ get
@@ -209,7 +209,9 @@ unify (InfixE (Just lhs1) exp1 Nothing)
       (InfixE (Just lhs2) exp2 Nothing) = do
   s1 <- unify lhs1 lhs2
   unifySub s1 exp1 exp2
-unify (TupE exps1) (TupE exps2) = do
+unify (TupE mexps1) (TupE mexps2) = do
+  exps1 <- sequenceA mexps1
+  exps2 <- sequenceA mexps2
   guard $ exps1 == exps2
   foldM (uncurry . unifySub) mempty $ zip exps1 exps2
 unify (CondE cond1 then1 else1) (CondE cond2 then2 else2) = do

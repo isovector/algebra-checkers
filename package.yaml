@@ -32,13 +32,14 @@ dependencies:
 - th-instance-reification >= 0.1.5.1
 - groups >= 0.4.1.0
 - checkers >= 0.5.5
-- th-tc
 - th-abstraction
 - haskell-lexer
 - parsec
 - string-interpolate
 - search-algorithms
 - dlist
+- th-orphans
+- lens
 
 ghc-options:
   - -Wall

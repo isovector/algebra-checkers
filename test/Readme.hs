@@ -6,6 +6,7 @@
 module Readme where
 
 import AlgebraCheckers
+import AlgebraCheckers.TH
 import Test.QuickCheck
 import Test.QuickCheck.Checkers
 
@@ -33,7 +34,7 @@ set = undefined
 
 pure []
 lawTests :: [(String, Property)]
-lawTests = $(theoremsOf [e| do
+lawTests = $(constructLaws [e| do
   law "set/set"
       (set i x' (set i x s) == set i x' s)
 
