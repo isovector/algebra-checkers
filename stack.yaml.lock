@@ -25,16 +25,9 @@ packages:
       sha256: 3887778ba91ac11e94300a82ce0898d9ce80dadcde7994676f3e66e7aee13bb7
   original:
     hackage: list-extras-0.4.1.4
-- completed:
-    hackage: checkers-0.5.5@sha256:0a319f9b6391912366fbdbe264732cbebe20424fb841f039584699f0114a1290,2124
-    pantry-tree:
-      size: 1267
-      sha256: 6c76c790e87c691cacd58fb03968dc19585f68eabdf6c17435fc9a5641aacbf9
-  original:
-    hackage: checkers-0.5.5
 snapshots:
 - completed:
-    size: 523443
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/0.yaml
-    sha256: 283773e7120f5446d961eab35ea95c9af9c24187cc178537bd29273200a05171
-  original: lts-14.0
+    size: 586296
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/18.yaml
+    sha256: 63539429076b7ebbab6daa7656cfb079393bf644971156dc349d7c0453694ac2
+  original: lts-18.18

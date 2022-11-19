@@ -1,4 +1,4 @@
-resolver: lts-14.0
+resolver: lts-18.18
 
 packages:
 - .
@@ -7,6 +7,5 @@ extra-deps:
 - ansi-terminal-0.10.3
 - th-instance-reification-0.1.5
 - list-extras-0.4.1.4
-- checkers-0.5.5
 
 allow-newer: true

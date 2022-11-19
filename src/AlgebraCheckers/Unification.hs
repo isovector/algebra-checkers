@@ -159,7 +159,7 @@ unify (InfixE (Just lhs1) exp1 Nothing)
       (InfixE (Just lhs2) exp2 Nothing) = do
   s1 <- unify lhs1 lhs2
   unifySub s1 exp1 exp2
-unify (TupE exps1) (TupE exps2) = do
+unify (TupE (sequenceA -> Just exps1)) (TupE (sequenceA -> Just exps2)) = do
   guard $ exps1 == exps2
   foldM (uncurry . unifySub) mempty $ zip exps1 exps2
 unify (CondE cond1 then1 else1) (CondE cond2 then2 else2) = do
