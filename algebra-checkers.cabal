@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b82e33c00a44f13bb2653ad3fb8f750bc17d16b2c3c2c62c4aa0efed07997433
+-- hash: b2ce128c345663de2a4dbe5b85693e0334dd72b5ff97280e770ac8ac296bb053
 
 name:           algebra-checkers
-version:        0.1.0.0
+version:        0.1.0.1
 synopsis:       Model and test API surfaces algebraically
 description:    Please see the README on GitHub at <https://github.com/isovector/algebra-checkers#readme>
 category:       Model
@@ -15,7 +15,7 @@ homepage:       https://github.com/isovector/algebra-checkers#readme
 bug-reports:    https://github.com/isovector/algebra-checkers/issues
 author:         Sandy Maguire
 maintainer:     sandy@sandymaguire.me
-copyright:      2020 Sandy Maguire
+copyright:      2020-2022 Sandy Maguire
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
